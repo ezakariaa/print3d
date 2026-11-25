@@ -781,6 +781,9 @@ html[data-theme='light'] .product-preview-details {
     color: rgba(197, 212, 206, 0.6);
     background: rgba(255, 255, 255, 0.03);
     border-bottom: 1px solid rgba(197, 212, 206, 0.12);
+    // Keep "Matériau ↕" and other titles with their sort arrow on one line.
+    white-space: nowrap;
+    vertical-align: middle;
   }
 
   tbody td {
