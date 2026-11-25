@@ -17,8 +17,11 @@ import type { ProductOptionCategory } from './data/options.js';
 import { services as defaultServices, type Service } from './data/services.js';
 import { CatalogueCache } from './catalogueCache.js';
 
-const localEnvFile = fileURLToPath(new URL('../.env', import.meta.url));
-if (existsSync(localEnvFile)) process.loadEnvFile(localEnvFile);
+// .env.local holds machine-only settings (e.g. the service key path); it is never deployed.
+for (const name of ['../.env.local', '../.env']) {
+  const envFile = fileURLToPath(new URL(name, import.meta.url));
+  if (existsSync(envFile)) process.loadEnvFile(envFile);
+}
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4000;
