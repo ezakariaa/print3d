@@ -1,0 +1,12 @@
+node_modules/
+node_modules-task-*/
+dist/
+build/
+.env
+.env.local
+server/.env.*
+!server/.env.example
+server/service-key.json
+server/.cache/
+*.log
+.DS_Store
