@@ -158,7 +158,7 @@ export async function registerUser(payload: RegisterPayload): Promise<User> {
 
   // 2. Also save via backend (Admin SDK) to guarantee saving in Firestore 'Users'
   try {
-    const apiBase = import.meta.env.PROD ? '/api' : (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api');
+    const apiBase = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000/api');
     await fetch(`${apiBase}/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -30,7 +30,8 @@ const allowedExtensions = new Set(['.stl', '.obj']);
 const allowedOrigins = [
   'http://localhost:5173',
   'http://127.0.0.1:5173',
-  process.env.CLIENT_ORIGIN,
+  // CLIENT_ORIGIN may list several origins separated by commas.
+  ...(process.env.CLIENT_ORIGIN ?? '').split(',').map((origin) => origin.trim()),
 ].filter((origin): origin is string => Boolean(origin));
 
 app.use(cors({ origin: allowedOrigins }));
@@ -56,8 +57,11 @@ function getConfiguredApp(): App {
           new URL(credentialPath, new URL('..', import.meta.url)),
         )
       : undefined;
-    const credential =
-      absoluteCredentialPath && existsSync(absoluteCredentialPath)
+    // On hosts without Google credentials (e.g. Vercel) the service account JSON comes from an env var.
+    const inlineServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT?.trim();
+    const credential = inlineServiceAccount
+      ? cert(JSON.parse(inlineServiceAccount))
+      : absoluteCredentialPath && existsSync(absoluteCredentialPath)
         ? cert(absoluteCredentialPath)
         : undefined;
     firebaseApp = getApps()[0] ?? initializeApp({
@@ -328,7 +332,7 @@ function isValidService(value: unknown): value is Service {
 // Catalogue caches: Firestore is read once per collection, then kept in memory and on disk.
 // Admin writes update the copies directly, so Firestore reads only happen on first start.
 const cacheDir = process.env.CATALOGUE_CACHE_DIR
-  ?? (process.env.FUNCTION_TARGET ? null : fileURLToPath(new URL('../.cache', import.meta.url)));
+  ?? (process.env.FUNCTION_TARGET || process.env.VERCEL ? null : fileURLToPath(new URL('../.cache', import.meta.url)));
 const cacheFile = (name: string) => (cacheDir ? `${cacheDir}/${name}.json` : null);
 
 const productsCache = new CatalogueCache<Product>('products', cacheFile('products'), async () => {
@@ -1640,7 +1644,13 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
 
 export const api = onRequest({ region: 'us-central1', maxInstances: 10 }, app);
 
-if (process.env.FUNCTIONS_EMULATOR !== 'true' && process.env.FUNCTION_TARGET === undefined) {
+export default app;
+
+if (
+  process.env.FUNCTIONS_EMULATOR !== 'true' &&
+  process.env.FUNCTION_TARGET === undefined &&
+  !process.env.VERCEL
+) {
   app.listen(PORT, () => {
     console.log(`3alam3D API → http://localhost:${PORT}`);
     // Prime every cache (from disk when available, otherwise one Firestore read per collection).

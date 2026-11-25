@@ -8,9 +8,9 @@ import type {
 import { getCurrentUserToken } from '../firebase';
 import { cached, invalidateCache } from '../utils/localCache';
 
-const API_BASE = import.meta.env.PROD
-  ? '/api'
-  : (import.meta.env.VITE_API_URL ?? 'http://localhost:4000/api');
+// Production builds read VITE_API_URL from .env.production (the API hosted on Vercel).
+const API_BASE = import.meta.env.VITE_API_URL
+  ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000/api');
 
 // Public catalogue data changes rarely: serve it from localStorage and refresh in the background.
 const CATALOGUE_CACHE = { freshMs: 0, maxAgeMs: 0 };
