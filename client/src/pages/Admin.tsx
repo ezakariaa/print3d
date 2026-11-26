@@ -797,7 +797,12 @@ export function Admin() {
       )}
 
       {section === 'orders' && (
-        <AdminOrdersTable orders={orders} onStatusChange={(orderId, status) => void changeOrderStatus(orderId, status)} />
+        <AdminOrdersTable
+          orders={orders}
+          products={products}
+          onStatusChange={(orderId, status) => void changeOrderStatus(orderId, status)}
+          onOrderSaved={(saved) => setOrders((current) => current.map((item) => item.orderId === saved.orderId ? saved : item))}
+        />
       )}
 
       {section === 'quotes' && (

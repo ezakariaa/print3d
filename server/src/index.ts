@@ -992,14 +992,21 @@ app.get('/api/wishlist', async (req, res) => {
 app.get('/api/my-orders', async (req, res) => {
   const user = await requireSignedInUser(req, res);
   if (!user) return;
-  const email = user.email_verified && user.email ? user.email.trim().toLowerCase() : null;
+  const email = user.email_verified && user.email ? user.email.trim() : null;
   try {
-    const mine = (await ordersCache.list()).filter((order) => {
-      if (order.uid === user.uid) return true;
-      const customer = order.customer as { email?: unknown } | undefined;
-      return !order.uid && email !== null && typeof customer?.email === 'string' &&
-        customer.email.trim().toLowerCase() === email;
+    // Read straight from Firestore (a few documents): a status changed anywhere,
+    // even in the Firebase console, is what the customer sees.
+    const orders = getDb().collection('orders');
+    const [byAccount, byEmail] = await Promise.all([
+      orders.where('uid', '==', user.uid).get(),
+      email ? orders.where('customer.email', '==', email).get() : Promise.resolve(null),
+    ]);
+    const found = new Map<string, StoredRecord>();
+    byAccount.docs.forEach((doc) => found.set(doc.id, toStoredRecord(doc.id, doc.data())));
+    byEmail?.docs.forEach((doc) => {
+      if (!doc.get('uid')) found.set(doc.id, toStoredRecord(doc.id, doc.data()));
     });
+    const mine = [...found.values()];
     res.setHeader('Cache-Control', 'private, no-store');
     res.json(newestFirst(mine).map(({ id: _id, uid: _uid, ...order }) => order));
   } catch (error) {
@@ -1893,22 +1900,117 @@ app.get('/api/admin/orders', async (_req, res) => {
   }
 });
 
+const ORDER_STATUSES = new Set(['pending', 'processing', 'completed', 'cancelled']);
+
 app.patch('/api/admin/orders/:id', async (req, res) => {
-  const allowedStatuses = new Set(['pending', 'processing', 'completed', 'cancelled']);
-  if (!allowedStatuses.has(req.body?.status)) {
+  if (!ORDER_STATUSES.has(req.body?.status)) {
     res.status(400).json({ error: 'Statut de commande invalide.' });
     return;
   }
   try {
-    const order = (await ordersCache.list()).find((entry) => entry.id === req.params.id);
-    if (!order) {
+    const ref = getDb().collection('orders').doc(req.params.id);
+    const snapshot = await ref.get();
+    if (!snapshot.exists) {
       res.status(404).json({ error: 'Commande introuvable.' });
       return;
     }
-    await getDb().collection('orders').doc(req.params.id)
-      .update({ status: req.body.status, updatedAt: FieldValue.serverTimestamp() });
-    ordersCache.upsert({ ...order, status: req.body.status });
+    await ref.update({ status: req.body.status, updatedAt: FieldValue.serverTimestamp() });
+    ordersCache.upsert({ ...toStoredRecord(ref.id, snapshot.data() ?? {}), status: req.body.status });
     res.json({ ok: true });
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
+const isText = (value: unknown, max: number, required = false): value is string =>
+  typeof value === 'string' && value.length <= max && (!required || value.trim().length > 0);
+
+/** Order corrected by the administrator: customer, lines, delivery, payment and status. */
+function parseAdminOrderUpdate(body: unknown) {
+  if (!body || typeof body !== 'object') return null;
+  const { customer, items, shipping, paymentMethod, status } = body as Record<string, unknown>;
+  if (!customer || typeof customer !== 'object') return null;
+  const c = customer as Record<string, unknown>;
+  if (
+    !isText(c.name, 120, true) ||
+    !isText(c.email, 254, true) || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email.trim()) ||
+    !isText(c.phone ?? '', 40) || !isText(c.address ?? '', 500) ||
+    !isText(c.city ?? '', 120) || !isText(c.note ?? '', 2000)
+  ) return null;
+  if (!Array.isArray(items) || items.length === 0 || items.length > 100) return null;
+  const lines = [];
+  for (const raw of items) {
+    if (!raw || typeof raw !== 'object') return null;
+    const line = raw as Record<string, unknown>;
+    if (
+      !isText(line.productId, 120, true) || !isText(line.slug ?? '', 200) || !isText(line.name, 200, true) ||
+      !isValidPrice(line.price) ||
+      typeof line.quantity !== 'number' || !Number.isInteger(line.quantity) || line.quantity < 1 || line.quantity > 999 ||
+      (line.customization !== undefined && (typeof line.customization !== 'object' || line.customization === null))
+    ) return null;
+    lines.push({
+      productId: line.productId,
+      slug: (line.slug as string | undefined) ?? '',
+      name: line.name.trim(),
+      price: line.price,
+      quantity: line.quantity,
+      customization: (line.customization as object | undefined) ?? {},
+    });
+  }
+  if (JSON.stringify(lines).length > MAX_OPTION_IMAGE_LENGTH + 200_000) return null;
+  let delivery: { carrierId: string; carrierName: string; price: number; delay: string } | null = null;
+  if (shipping !== null && shipping !== undefined) {
+    if (typeof shipping !== 'object') return null;
+    const s = shipping as Record<string, unknown>;
+    if (!isText(s.carrierId ?? '', 80) || !isText(s.carrierName, 120, true) || !isValidPrice(s.price) || !isText(s.delay ?? '', 120)) {
+      return null;
+    }
+    delivery = {
+      carrierId: (s.carrierId as string | undefined) ?? '',
+      carrierName: s.carrierName.trim(),
+      price: s.price,
+      delay: ((s.delay as string | undefined) ?? '').trim(),
+    };
+  }
+  if (paymentMethod !== 'cash_on_delivery' && paymentMethod !== 'bank_transfer') return null;
+  if (typeof status !== 'string' || !ORDER_STATUSES.has(status)) return null;
+  const subtotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
+  return {
+    customer: {
+      name: c.name.trim(),
+      email: c.email.trim(),
+      phone: ((c.phone as string | undefined) ?? '').trim(),
+      address: ((c.address as string | undefined) ?? '').trim(),
+      city: ((c.city as string | undefined) ?? '').trim(),
+      note: ((c.note as string | undefined) ?? '').trim(),
+    },
+    items: lines,
+    subtotal,
+    shipping: delivery,
+    paymentMethod,
+    total: subtotal + (delivery?.price ?? 0),
+    status,
+  };
+}
+
+app.put('/api/admin/orders/:id', async (req, res) => {
+  const update = parseAdminOrderUpdate(req.body);
+  if (!update) {
+    res.status(400).json({ error: 'Commande invalide : vérifiez les champs (client, articles, livraison, paiement).' });
+    return;
+  }
+  try {
+    const ref = getDb().collection('orders').doc(req.params.id);
+    const snapshot = await ref.get();
+    if (!snapshot.exists) {
+      res.status(404).json({ error: 'Commande introuvable.' });
+      return;
+    }
+    await ref.update({ ...update, updatedAt: FieldValue.serverTimestamp() });
+    const stored = { ...toStoredRecord(ref.id, snapshot.data() ?? {}), ...update };
+    ordersCache.upsert(stored);
+    const { id: _id, ...order } = stored;
+    res.json(order);
   } catch (error) {
     sendFirebaseError(res, error);
   }

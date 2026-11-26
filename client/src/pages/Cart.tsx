@@ -16,6 +16,7 @@ import { getFirebaseAuth, isFirebaseConfigured, onAuthStateChanged } from '../fi
 import { readCached, writeCached } from '../utils/localCache';
 import { formatPrice } from '../utils/formatPrice';
 import { getProductImage } from '../utils/productImages';
+import { normalizeCity, shippingQuote } from '../utils/shipping';
 
 const PAYMENT_METHODS: Array<{ id: PaymentMethod; label: string; detail: string }> = [
   {
@@ -29,21 +30,6 @@ const PAYMENT_METHODS: Array<{ id: PaymentMethod; label: string; detail: string 
     detail: 'L’atelier vous envoie ses coordonnées bancaires ; la commande est préparée dès réception du virement.',
   },
 ];
-
-/** City name compared without accents, case or punctuation (same rule as the server). */
-function normalizeCity(city: string) {
-  return city.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-}
-
-/** Delivery price and delay for a city, or null when the carrier does not serve it. */
-function shippingQuote(carrier: Carrier, city: string, subtotal: number) {
-  const wanted = normalizeCity(city);
-  if (!wanted) return null;
-  const zone = carrier.zones.find((item) => item.cities.some((name) => normalizeCity(name) === wanted));
-  if (!zone) return null;
-  const free = carrier.freeFrom !== null && subtotal >= carrier.freeFrom;
-  return { price: free ? 0 : zone.price, delay: zone.delay || carrier.delay, free };
-}
 
 export function Cart() {
   const { items, total, updateQty, removeItem, clear, itemKey } = useCart();

@@ -129,6 +129,8 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 export interface AdminOrder {
   orderId: string;
   items: Array<{
+    productId?: string;
+    slug?: string;
     name: string;
     quantity: number;
     price: number;
@@ -397,6 +399,17 @@ export function updateAdminOrder(orderId: string, status: string) {
   return adminRequest<{ ok: boolean }>(`/admin/orders/${encodeURIComponent(orderId)}`, {
     method: 'PATCH',
     body: JSON.stringify({ status }),
+  });
+}
+
+/** Order corrected by the administrator; the server recomputes subtotal and total. */
+export function saveAdminOrder(
+  orderId: string,
+  order: Pick<AdminOrder, 'customer' | 'items' | 'shipping' | 'paymentMethod' | 'status'>,
+) {
+  return adminRequest<AdminOrder>(`/admin/orders/${encodeURIComponent(orderId)}`, {
+    method: 'PUT',
+    body: JSON.stringify(order),
   });
 }
 

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Button, Form, Table } from 'react-bootstrap';
 import { PAYMENT_METHOD_LABELS, type AdminOrder } from '../api/client';
 import { InvoicePreviewModal } from '../components/InvoicePreviewModal';
+import { OrderEditModal } from '../components/OrderEditModal';
+import type { Product } from '../types';
 import { formatPrice } from '../utils/formatPrice';
 
 function dateLabel(value: string | null) {
@@ -10,12 +12,16 @@ function dateLabel(value: string | null) {
 
 interface Props {
   orders: AdminOrder[];
+  /** Catalogue, to add a product while correcting an order. */
+  products: Product[];
   onStatusChange: (orderId: string, status: string) => void;
+  onOrderSaved: (order: AdminOrder) => void;
 }
 
 /** Orders table of "Gestion des commandes". */
-export function AdminOrdersTable({ orders, onStatusChange }: Props) {
+export function AdminOrdersTable({ orders, products, onStatusChange, onOrderSaved }: Props) {
   const [invoiceOrder, setInvoiceOrder] = useState<AdminOrder | null>(null);
+  const [editOrder, setEditOrder] = useState<AdminOrder | null>(null);
 
   return (
     <>
@@ -49,6 +55,19 @@ export function AdminOrdersTable({ orders, onStatusChange }: Props) {
                     <path d="M14 3v5h5M9 13h6M9 17h4" />
                   </svg>
                   Facture PDF
+                </Button>
+                <Button
+                  size="sm"
+                  variant="link"
+                  className="admin-order-invoice"
+                  onClick={() => setEditOrder(order)}
+                  aria-label={`Modifier la commande ${order.orderId}`}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                  </svg>
+                  Modifier
                 </Button>
               </td>
               <td>
@@ -147,6 +166,15 @@ export function AdminOrdersTable({ orders, onStatusChange }: Props) {
       </Table>
     </div>
     <InvoicePreviewModal order={invoiceOrder} onHide={() => setInvoiceOrder(null)} />
+    <OrderEditModal
+      order={editOrder}
+      products={products}
+      onHide={() => setEditOrder(null)}
+      onSaved={(saved) => {
+        onOrderSaved(saved);
+        setEditOrder(null);
+      }}
+    />
     </>
   );
 }

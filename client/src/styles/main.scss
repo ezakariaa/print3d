@@ -1039,6 +1039,59 @@ html[data-theme='light'] .product-preview-details {
   }
 }
 
+.btn.admin-order-invoice + .btn.admin-order-invoice {
+  margin-left: 0.35rem;
+}
+
+// Order correction window (admin).
+.order-edit-section {
+  margin-bottom: 0.85rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--dashboard-panel-border);
+  color: var(--brand-teal);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.order-edit-items {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.order-edit-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 9.5rem 5rem 7rem auto;
+  align-items: start;
+  gap: 0.6rem;
+  padding: 0.6rem;
+  border-radius: 0.6rem;
+  background: var(--dashboard-row-bg);
+}
+
+.order-edit-item-total {
+  padding-top: 0.45rem;
+  font-weight: 700;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.order-edit-summary {
+  max-width: 22rem;
+  margin-left: auto;
+}
+
+@media (max-width: 767.98px) {
+  .order-edit-item {
+    grid-template-columns: 1fr 1fr auto;
+
+    .order-edit-item-name {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
 .invoice-modal .modal-body {
   max-height: none;
   overflow: hidden;
@@ -2308,6 +2361,18 @@ html:not([data-theme='light']) {
 
   .form-text {
     color: rgba(232, 242, 239, 0.58);
+  }
+
+  // Secondary buttons of the windows (Annuler, Fermer, Imprimer…) readable on the dark background.
+  .modal .btn-outline-secondary {
+    --bs-btn-color: var(--brand-mist);
+    --bs-btn-border-color: rgba(197, 212, 206, 0.35);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: rgba(197, 212, 206, 0.1);
+    --bs-btn-hover-border-color: rgba(197, 212, 206, 0.6);
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: rgba(197, 212, 206, 0.16);
+    --bs-btn-active-border-color: rgba(197, 212, 206, 0.6);
   }
 }
 
