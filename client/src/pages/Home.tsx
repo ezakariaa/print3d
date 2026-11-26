@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Col, Container, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { fetchProducts } from '../api/client';
 import { HeroVideoBackground } from '../components/HeroVideoBackground';
 import { ProductCard } from '../components/ProductCard';
-import type { Product } from '../types';
+import type { Product, ProductCategory } from '../types';
 
 // Two rows of four cards on large screens.
 const FEATURED_COUNT = 8;
@@ -91,22 +91,37 @@ function pickRandom<T>(items: T[], count: number, seed: number): T[] {
 
 const featuredSeed = Math.floor(Math.random() * 0xffffffff);
 
+const FEATURED_TABS: Array<{ value: 'all' | ProductCategory; label: string; short: string }> = [
+  { value: 'all', label: 'Tous', short: 'Tous' },
+  { value: 'ready', label: 'Prêts à commander', short: 'Prêts' },
+  { value: 'customizable', label: 'À personnaliser', short: 'Personnalisables' },
+];
+
 export function Home() {
-  const [featured, setFeatured] = useState<Product[]>([]);
+  const [catalogue, setCatalogue] = useState<Product[]>([]);
+  const [featuredTab, setFeaturedTab] = useState<'all' | ProductCategory>('all');
 
   useEffect(() => {
     let cancelled = false;
     fetchProducts()
       .then((list) => {
-        if (!cancelled) setFeatured(pickRandom(list, FEATURED_COUNT, featuredSeed));
+        if (!cancelled) setCatalogue(list.filter((product) => product.active !== false));
       })
       .catch(() => {
-        if (!cancelled) setFeatured([]);
+        if (!cancelled) setCatalogue([]);
       });
     return () => {
       cancelled = true;
     };
   }, []);
+
+  // Seven products of the chosen kind; the eighth tile leads to the shop.
+  const featured = useMemo(() => {
+    const pool = featuredTab === 'all' ? catalogue : catalogue.filter((product) => product.category === featuredTab);
+    return pickRandom(pool, FEATURED_COUNT - 1, featuredSeed);
+  }, [catalogue, featuredTab]);
+  const countFor = (tab: 'all' | ProductCategory) =>
+    tab === 'all' ? catalogue.length : catalogue.filter((product) => product.category === tab).length;
 
   return (
     <>
@@ -167,21 +182,56 @@ export function Home() {
         </Container>
       </section>
 
-      <section className="section pt-0">
+      <section className="section featured-section">
         <Container>
-          <div className="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-2">
+          <div className="featured-header">
             <div>
+              <span className="ways-kicker">Coups de cœur de l’atelier</span>
               <h2 className="section-title mb-1">Sélection atelier</h2>
-              <p className="section-lead mb-0">Quelques pièces phares de la collection.</p>
+              <p className="section-lead mb-0">Des pièces imprimées chez nous, choisies parmi toute la collection.</p>
             </div>
-            <Link to="/boutique">Toute la boutique →</Link>
+            <div className="featured-tabs" role="tablist" aria-label="Type de produits">
+              {FEATURED_TABS.map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={featuredTab === tab.value}
+                  className={`featured-tab${featuredTab === tab.value ? ' is-active' : ''}`}
+                  onClick={() => setFeaturedTab(tab.value)}
+                >
+                  <span className="d-none d-sm-inline">{tab.label}</span>
+                  <span className="d-sm-none">{tab.short}</span>
+                  <span className="featured-tab-count">{countFor(tab.value)}</span>
+                </button>
+              ))}
+            </div>
           </div>
-          <Row className="gy-4">
+          <Row className="g-4">
             {featured.map((p) => (
               <Col key={p.id} xs={6} lg={3}>
                 <ProductCard product={p} />
               </Col>
             ))}
+            {catalogue.length > 0 && (
+              <Col xs={6} lg={3}>
+                <Link
+                  to={featuredTab === 'customizable' ? '/personnaliser' : '/boutique'}
+                  className="featured-more"
+                >
+                  <span className="featured-more-count">{countFor(featuredTab)}</span>
+                  <span className="featured-more-label">
+                    {featuredTab === 'customizable' ? 'modèles à personnaliser' : 'produits dans la boutique'}
+                  </span>
+                  <span className="featured-more-cta">
+                    Tout voir
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                  </span>
+                </Link>
+              </Col>
+            )}
           </Row>
         </Container>
       </section>
