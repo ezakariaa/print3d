@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from '
 import { Alert, Button, Col, Container, Form, Modal, Row, Table } from 'react-bootstrap';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
+  deleteAdminOrder,
   deleteAdminService,
   deleteAdminProduct,
   fetchAdminServices,
@@ -515,6 +516,19 @@ export function Admin() {
     }
   };
 
+  const removeOrder = async (order: AdminOrder) => {
+    const confirmed = window.confirm(
+      `Supprimer définitivement la commande ${order.orderId} de ${order.customer.name} (${formatPrice(order.total)}) ?\n\nElle disparaîtra aussi de l’espace du client.`,
+    );
+    if (!confirmed) return;
+    try {
+      await deleteAdminOrder(order.orderId);
+      setOrders((current) => current.filter((item) => item.orderId !== order.orderId));
+    } catch (err) {
+      showError(err);
+    }
+  };
+
   const changeQuoteStatus = async (id: string, status: string) => {
     try {
       await updateAdminQuote(id, status);
@@ -802,6 +816,7 @@ export function Admin() {
           products={products}
           onStatusChange={(orderId, status) => void changeOrderStatus(orderId, status)}
           onOrderSaved={(saved) => setOrders((current) => current.map((item) => item.orderId === saved.orderId ? saved : item))}
+          onDelete={(order) => void removeOrder(order)}
         />
       )}
 

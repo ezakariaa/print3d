@@ -1039,8 +1039,11 @@ html[data-theme='light'] .product-preview-details {
   }
 }
 
-.btn.admin-order-invoice + .btn.admin-order-invoice {
-  margin-left: 0.35rem;
+// Modifier · Aperçu · Supprimer, under the status pill.
+.admin-order-actions {
+  display: flex;
+  align-items: center;
+  margin-top: 0.55rem;
 }
 
 // Order correction window (admin).

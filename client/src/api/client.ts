@@ -413,6 +413,10 @@ export function saveAdminOrder(
   });
 }
 
+export function deleteAdminOrder(orderId: string) {
+  return adminRequest<{ ok: boolean }>(`/admin/orders/${encodeURIComponent(orderId)}`, { method: 'DELETE' });
+}
+
 export function fetchAdminQuotes() {
   return adminRequest<AdminQuote[]>('/admin/quotes');
 }

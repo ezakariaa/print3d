@@ -1922,6 +1922,21 @@ app.patch('/api/admin/orders/:id', async (req, res) => {
   }
 });
 
+app.delete('/api/admin/orders/:id', async (req, res) => {
+  try {
+    const ref = getDb().collection('orders').doc(req.params.id);
+    if (!(await ref.get()).exists) {
+      res.status(404).json({ error: 'Commande introuvable.' });
+      return;
+    }
+    await ref.delete();
+    ordersCache.remove(ref.id);
+    res.json({ ok: true });
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
 const isText = (value: unknown, max: number, required = false): value is string =>
   typeof value === 'string' && value.length <= max && (!required || value.trim().length > 0);
 

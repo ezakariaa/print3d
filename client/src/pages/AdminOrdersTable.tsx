@@ -16,10 +16,12 @@ interface Props {
   products: Product[];
   onStatusChange: (orderId: string, status: string) => void;
   onOrderSaved: (order: AdminOrder) => void;
+  /** Asks for confirmation, then deletes the order. */
+  onDelete: (order: AdminOrder) => void;
 }
 
 /** Orders table of "Gestion des commandes". */
-export function AdminOrdersTable({ orders, products, onStatusChange, onOrderSaved }: Props) {
+export function AdminOrdersTable({ orders, products, onStatusChange, onOrderSaved, onDelete }: Props) {
   const [invoiceOrder, setInvoiceOrder] = useState<AdminOrder | null>(null);
   const [editOrder, setEditOrder] = useState<AdminOrder | null>(null);
 
@@ -43,32 +45,6 @@ export function AdminOrdersTable({ orders, products, onStatusChange, onOrderSave
               <td>
                 <div className="admin-order-id">{order.orderId}</div>
                 <div className="admin-order-muted text-nowrap">{dateLabel(order.createdAt)}</div>
-                <Button
-                  size="sm"
-                  variant="link"
-                  className="admin-order-invoice"
-                  onClick={() => setInvoiceOrder(order)}
-                  aria-label={`Aperçu de la facture de la commande ${order.orderId}`}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-                    <path d="M14 3v5h5M9 13h6M9 17h4" />
-                  </svg>
-                  Facture PDF
-                </Button>
-                <Button
-                  size="sm"
-                  variant="link"
-                  className="admin-order-invoice"
-                  onClick={() => setEditOrder(order)}
-                  aria-label={`Modifier la commande ${order.orderId}`}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                  </svg>
-                  Modifier
-                </Button>
               </td>
               <td>
                 <div className="fw-semibold">{order.customer.name}</div>
@@ -158,6 +134,46 @@ export function AdminOrdersTable({ orders, products, onStatusChange, onOrderSave
                   <option value="completed">Terminée</option>
                   <option value="cancelled">Annulée</option>
                 </Form.Select>
+                <div className="admin-order-actions">
+                  <Button
+                    variant="link"
+                    className="admin-icon-btn"
+                    title="Modifier"
+                    aria-label={`Modifier la commande ${order.orderId}`}
+                    onClick={() => setEditOrder(order)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                  </Button>
+                  <Button
+                    variant="link"
+                    className="admin-icon-btn"
+                    title="Aperçu de la facture"
+                    aria-label={`Aperçu de la facture de la commande ${order.orderId}`}
+                    onClick={() => setInvoiceOrder(order)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </Button>
+                  <Button
+                    variant="link"
+                    className="admin-icon-btn admin-icon-btn-danger"
+                    title="Supprimer"
+                    aria-label={`Supprimer la commande ${order.orderId}`}
+                    onClick={() => onDelete(order)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M3 6h18" />
+                      <path d="M8 6V4h8v2" />
+                      <path d="M19 6l-1 14H6L5 6" />
+                      <path d="M10 11v6M14 11v6" />
+                    </svg>
+                  </Button>
+                </div>
               </td>
             </tr>
           ))}
