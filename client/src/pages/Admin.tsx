@@ -686,6 +686,8 @@ export function Admin() {
                     : 'Retrouvez les produits que vous avez aimés.'}
                 </p>
               </Link>
+              {/* The administrator sees every order in "Gestion des commandes". */}
+              {!isAdmin && (
               <Link to="/mes-commandes" className="admin-dashboard-card">
                 <div className="admin-dashboard-card-heading">
                   <span className="admin-dashboard-icon" aria-hidden="true">
@@ -695,6 +697,7 @@ export function Admin() {
                 </div>
                 <p>Suivez vos commandes, leur statut et téléchargez vos factures.</p>
               </Link>
+              )}
               {isAdmin && ([
                 'users', 'orders', 'products', 'options', 'quotes', 'services', 'carriers',
               ] as const).map((key) => [key, ADMIN_SECTIONS[key].title, ADMIN_SECTIONS[key].description, key] as const)
