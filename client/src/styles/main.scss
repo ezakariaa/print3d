@@ -1044,6 +1044,195 @@ html[data-theme='light'] .product-preview-details {
   white-space: nowrap;
 }
 
+// "Personnaliser": hero with photo collage, steps, models, call to action.
+.custom-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 2.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.custom-hero-text .btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.custom-collage {
+  position: relative;
+  height: 22rem;
+}
+
+.custom-collage-item {
+  position: absolute;
+  overflow: hidden;
+  border: 4px solid var(--brand-ink-soft);
+  border-radius: 1.1rem;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  &:nth-child(1) { top: 0; left: 8%; width: 52%; height: 62%; transform: rotate(-5deg); z-index: 2; }
+  &:nth-child(2) { top: 12%; right: 2%; width: 46%; height: 55%; transform: rotate(6deg); z-index: 1; }
+  &:nth-child(3) { bottom: 0; left: 30%; width: 46%; height: 52%; transform: rotate(-1deg); z-index: 3; }
+}
+
+.custom-collage.is-1 .custom-collage-item {
+  inset: 0 10%;
+  width: auto;
+  height: 100%;
+  transform: rotate(-2deg);
+}
+
+html[data-theme='light'] .custom-collage-item {
+  border-color: #fff;
+  box-shadow: 0 18px 40px rgba(23, 36, 45, 0.15);
+}
+
+.custom-steps {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin: 0 0 3rem;
+  padding: 0;
+  list-style: none;
+}
+
+.custom-step {
+  position: relative;
+  padding: 1.4rem 1.3rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 1rem;
+  background: var(--brand-ink-soft);
+
+  // Arrow towards the next step.
+  &:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    right: -0.95rem;
+    z-index: 1;
+    width: 0.9rem;
+    height: 0.9rem;
+    border-top: 2px solid var(--brand-teal);
+    border-right: 2px solid var(--brand-teal);
+    transform: translateY(-50%) rotate(45deg);
+  }
+}
+
+html[data-theme='light'] .custom-step {
+  background: #fff;
+}
+
+.custom-step-icon {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-bottom: 0.85rem;
+  place-items: center;
+  border-radius: 0.8rem;
+  background: var(--dashboard-icon-bg);
+  color: var(--brand-teal);
+
+  svg {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+}
+
+.custom-step-number {
+  color: var(--brand-teal);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.custom-step-title {
+  margin: 0.2rem 0 0.35rem;
+  font-size: 1.1rem;
+}
+
+.custom-step-text {
+  margin: 0;
+  color: var(--dashboard-muted);
+  font-size: 0.88rem;
+}
+
+.custom-models {
+  scroll-margin-top: 6rem;
+}
+
+.custom-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-top: 3.5rem;
+  padding: 1.75rem 2rem;
+  border-radius: 1.25rem;
+  background:
+    radial-gradient(circle at 90% 10%, rgba(255, 255, 255, 0.16), transparent 45%),
+    linear-gradient(135deg, #12b8a0, #087f72 65%, #064e46);
+  color: #fff;
+
+  p {
+    opacity: 0.9;
+  }
+
+  .btn-light {
+    font-weight: 700;
+  }
+}
+
+.btn.custom-cta-whatsapp {
+  border: 0;
+  background: #25d366;
+  color: #fff;
+  font-weight: 700;
+
+  &:hover {
+    background: #1ebe5b;
+    color: #fff;
+  }
+}
+
+@media (max-width: 991.98px) {
+  .custom-hero {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .custom-collage {
+    height: 16rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .custom-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .custom-step:not(:last-child)::after {
+    top: auto;
+    right: 50%;
+    bottom: -0.95rem;
+    transform: translateX(50%) rotate(135deg);
+  }
+
+  .custom-cta {
+    padding: 1.5rem;
+  }
+}
+
 // Shop: header, sticky toolbar (categories, search, sort), popular tags, results line.
 .shop-header {
   margin-bottom: 1.75rem;
