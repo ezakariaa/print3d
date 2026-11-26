@@ -1,6 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { Footer } from './components/Footer';
 import { Navbar } from './components/Navbar';
+import { WhatsAppButton } from './components/WhatsAppButton';
 import { CartProvider } from './context/CartContext';
 import { WishlistProvider } from './context/WishlistContext';
 import { Cart } from './pages/Cart';
@@ -44,6 +45,7 @@ export default function App() {
           </Routes>
         </main>
         <Footer />
+        <WhatsAppButton />
       </BrowserRouter>
       </WishlistProvider>
     </CartProvider>
