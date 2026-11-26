@@ -2,6 +2,7 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { Footer } from './components/Footer';
 import { Navbar } from './components/Navbar';
 import { CartProvider } from './context/CartContext';
+import { WishlistProvider } from './context/WishlistContext';
 import { Cart } from './pages/Cart';
 import { Contact } from './pages/Contact';
 import { Customize } from './pages/Customize';
@@ -11,10 +12,12 @@ import { ProductDetail } from './pages/ProductDetail';
 import { Profile } from './pages/Profile';
 import { Services } from './pages/Services';
 import { Shop } from './pages/Shop';
+import { Wishlist } from './pages/Wishlist';
 
 export default function App() {
   return (
     <CartProvider>
+      <WishlistProvider>
       <BrowserRouter>
         <Navbar />
         <main>
@@ -35,10 +38,12 @@ export default function App() {
             <Route path="/admin/services" element={<Admin />} />
             <Route path="/admin/livraison" element={<Admin />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/wishlist" element={<Wishlist />} />
           </Routes>
         </main>
         <Footer />
       </BrowserRouter>
+      </WishlistProvider>
     </CartProvider>
   );
 }

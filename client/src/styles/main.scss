@@ -382,15 +382,95 @@ a {
   padding: 0.7rem 1.4rem;
 }
 
+// Card + wishlist heart: the lift on hover is on the wrapper so the heart moves with the card.
+.product-tile-wrap {
+  position: relative;
+  height: 100%;
+  transition: transform 0.35s ease;
+
+  &:hover {
+    transform: translateY(-4px);
+  }
+}
+
+.wishlist-toggle {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 2;
+  width: 2.35rem;
+  height: 2.35rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: #17242d;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 4px 14px rgba(7, 16, 24, 0.18);
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+  transition: transform 0.2s ease, color 0.2s ease, background 0.2s ease;
+
+  svg {
+    width: 1.2rem;
+    height: 1.2rem;
+    fill: transparent;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linejoin: round;
+    transition: fill 0.2s ease;
+  }
+
+  &:hover {
+    transform: scale(1.1);
+    color: #e5484d;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--brand-teal);
+    outline-offset: 2px;
+  }
+
+  &.is-active {
+    color: #e5484d;
+
+    svg {
+      fill: currentColor;
+      animation: wishlist-pop 0.35s ease;
+    }
+  }
+}
+
+@keyframes wishlist-pop {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .product-tile-wrap,
+  .wishlist-toggle {
+    transition: none;
+  }
+
+  .product-tile-wrap:hover {
+    transform: none;
+  }
+
+  .wishlist-toggle.is-active svg {
+    animation: none;
+  }
+}
+
 .product-tile {
   display: block;
   height: 100%;
   color: inherit;
-  transition: transform 0.35s ease;
 
   &:hover {
     color: inherit;
-    transform: translateY(-4px);
 
     .product-visual {
       filter: brightness(1.08);

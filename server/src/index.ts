@@ -893,6 +893,45 @@ app.get('/api/cart', async (req, res) => {
   }
 });
 
+// ---------- Wishlist: product ids, one Firestore document per account ----------
+const MAX_WISHLIST_ITEMS = 200;
+const wishlistDoc = (uid: string) => getDb().collection('Wishlists').doc(uid);
+
+app.get('/api/wishlist', async (req, res) => {
+  const user = await requireSignedInUser(req, res);
+  if (!user) return;
+  try {
+    const snapshot = await wishlistDoc(user.uid).get();
+    const productIds = snapshot.get('productIds');
+    res.json({ productIds: Array.isArray(productIds) ? productIds : [] });
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
+app.put('/api/wishlist', async (req, res) => {
+  const user = await requireSignedInUser(req, res);
+  if (!user) return;
+  const raw = req.body?.productIds;
+  if (
+    !Array.isArray(raw) ||
+    raw.length > MAX_WISHLIST_ITEMS ||
+    !raw.every((id) => typeof id === 'string' && /^[a-zA-Z0-9_-]{1,120}$/.test(id))
+  ) {
+    res.status(400).json({ error: 'Liste de favoris invalide.' });
+    return;
+  }
+  try {
+    await wishlistDoc(user.uid).set({
+      productIds: [...new Set(raw as string[])],
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    res.json({ ok: true });
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
 app.put('/api/cart', async (req, res) => {
   const user = await requireSignedInUser(req, res);
   if (!user) return;

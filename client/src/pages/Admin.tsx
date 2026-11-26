@@ -37,6 +37,7 @@ import { flushCartSync } from '../context/CartContext';
 import { getProductImage } from '../utils/productImages';
 import { slugify } from '../utils/slugify';
 import { AuthModal } from '../components/AuthModal';
+import { useWishlist } from '../context/WishlistContext';
 import { Paginator, clampPage } from '../components/Paginator';
 import { AdminCarriers } from './AdminCarriers';
 import { AdminOptions } from './AdminOptions';
@@ -126,6 +127,7 @@ export function Admin() {
   const [authReady, setAuthReady] = useState(!isFirebaseConfigured);
   const [showAuth, setShowAuth] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
+  const { count: wishlistCount } = useWishlist();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [quotes, setQuotes] = useState<AdminQuote[]>([]);
@@ -679,6 +681,19 @@ export function Admin() {
                   <h2>Mon profil</h2>
                 </div>
                 <p>Consultez et modifiez vos coordonnées personnelles.</p>
+              </Link>
+              <Link to="/wishlist" className="admin-dashboard-card">
+                <div className="admin-dashboard-card-heading">
+                  <span className="admin-dashboard-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.3-9.4C1.4 7.6 3.6 4 7.2 4c2 0 3.6 1.1 4.8 2.8C13.2 5.1 14.8 4 16.8 4c3.6 0 5.8 3.6 4.5 7.1-1.8 4.8-9.3 9.4-9.3 9.4Z" /></svg>
+                  </span>
+                  <h2>Ma wishlist</h2>
+                </div>
+                <p>
+                  {wishlistCount > 0
+                    ? `${wishlistCount} produit${wishlistCount > 1 ? 's' : ''} mis de côté.`
+                    : 'Retrouvez les produits que vous avez aimés.'}
+                </p>
               </Link>
           </div>
         </Col>

@@ -188,6 +188,18 @@ export function saveUserProfile(profile: Omit<UserProfile, 'email'>) {
   });
 }
 
+export async function fetchUserWishlist() {
+  const { productIds } = await authenticatedRequest<{ productIds: string[] }>('/wishlist');
+  return productIds;
+}
+
+export function saveUserWishlist(productIds: string[]) {
+  return authenticatedRequest<{ ok: boolean }>('/wishlist', {
+    method: 'PUT',
+    body: JSON.stringify({ productIds }),
+  });
+}
+
 export async function fetchUserCart() {
   const { items } = await authenticatedRequest<{ items: CartItem[] }>('/cart');
   return items;
