@@ -11,3 +11,4 @@ server/.cache/
 *.log
 .DS_Store
 .firebase/
+backups/

@@ -12,13 +12,15 @@ import { cached, invalidateCache } from '../utils/localCache';
 const API_BASE = import.meta.env.VITE_API_URL
   ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000/api');
 
-// Public catalogue data changes rarely: serve it from localStorage and refresh in the background.
-const CATALOGUE_CACHE = { freshMs: 0, maxAgeMs: 0 };
+// Public catalogue data changes rarely: serve it from localStorage, ask the API again after
+// 5 minutes (in the background, the page shows the stored copy meanwhile), forget it after a week.
+const CATALOGUE_CACHE = { freshMs: 5 * 60 * 1000, maxAgeMs: 7 * 24 * 60 * 60 * 1000 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    // Content-Type only with a body: on a GET it would force an extra CORS preflight request.
+    headers: { ...(init?.body ? { 'Content-Type': 'application/json' } : {}), ...(init?.headers ?? {}) },
   });
 
   if (!res.ok) {

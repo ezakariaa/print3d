@@ -9,13 +9,15 @@ import { getAuth, type DecodedIdToken } from 'firebase-admin/auth';
 import { FieldValue, getFirestore, Timestamp, type Firestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { onRequest } from 'firebase-functions/v2/https';
+import { put } from '@vercel/blob';
+import { addCacheTag, getCache, invalidateByTag, waitUntil } from '@vercel/functions';
 import {
   products as defaultProducts,
   type Product,
 } from './data/products.js';
 import type { ProductOptionCategory } from './data/options.js';
 import { services as defaultServices, type Service } from './data/services.js';
-import { CatalogueCache } from './catalogueCache.js';
+import { CatalogueCache, type SharedStore } from './catalogueCache.js';
 
 // .env.local holds machine-only settings (e.g. the service key path); it is never deployed.
 for (const name of ['../.env.local', '../.env']) {
@@ -34,7 +36,40 @@ const allowedOrigins = [
   ...(process.env.CLIENT_ORIGIN ?? '').split(',').map((origin) => origin.trim()),
 ].filter((origin): origin is string => Boolean(origin));
 
-app.use(cors({ origin: allowedOrigins }));
+/**
+ * Runs a Vercel platform helper without ever breaking the request: depending on the runtime
+ * these return a promise, nothing, or throw when no Vercel context is available (locally).
+ */
+function safely(task: () => unknown, label: string) {
+  const report = (error: unknown) => console.warn(`[vercel] ${label} impossible.`, error);
+  try {
+    const result = task();
+    if (result instanceof Promise) waitUntil(result.catch(report));
+  } catch (error) {
+    report(error);
+  }
+}
+
+// Public catalogue reads (no credentials) are cacheable by the CDN.
+const PUBLIC_CATALOGUE_PATH = /^\/api\/(products(\/[^/]+)?|options|services|carriers)\/?$/;
+const CATALOGUE_CDN_TAG = 'catalogue';
+const isPublicCatalogueRead = (req: Request) =>
+  (req.method === 'GET' || req.method === 'HEAD') && PUBLIC_CATALOGUE_PATH.test(req.path);
+
+// Public catalogue reads allow any origin: the answer is the same for everyone, so a single
+// CDN copy can serve every domain of the site. Everything else keeps the origin allow-list.
+app.use(cors((req, callback) => {
+  callback(null, isPublicCatalogueRead(req as Request) ? { origin: '*' } : { origin: allowedOrigins });
+}));
+// The CDN keeps public catalogue answers 5 min (an admin change also purges them, see /api/admin).
+app.use((req, res, next) => {
+  if (isPublicCatalogueRead(req)) {
+    res.set('Cache-Control', 'public, max-age=0, must-revalidate');
+    res.set('Vercel-CDN-Cache-Control', 'max-age=300, stale-while-revalidate=86400');
+    safely(() => addCacheTag(CATALOGUE_CDN_TAG), 'marquage CDN');
+  }
+  next();
+});
 app.use(compression());
 // Product and option images travel inline as base64 data URLs.
 app.use(express.json({ limit: '12mb' }));
@@ -93,6 +128,7 @@ function hasFirebaseProject(): boolean {
 
 function sendFirebaseError(res: Response, error: unknown) {
   console.error('[firebase]', error);
+  res.set('Vercel-CDN-Cache-Control', 'no-store');
   const message = error instanceof Error ? error.message : '';
   if (message.includes('RESOURCE_EXHAUSTED') || message.includes('Quota')) {
     res.status(503).json({
@@ -294,22 +330,54 @@ async function uploadAdminImage(req: Request, res: Response, folder: string) {
   }
 
   try {
-    const bucket = getStorage(getConfiguredApp()).bucket();
-    const path = `${folder}/${randomUUID()}.${extensionByType[contentType]}`;
-    const token = randomUUID();
-    await bucket.file(path).save(req.body, {
-      resumable: false,
-      metadata: {
-        contentType,
-        metadata: { firebaseStorageDownloadTokens: token },
-      },
-    });
-    res.status(201).json({
-      url: `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`,
-    });
+    const url = await storeImage(req.body, contentType, folder);
+    res.status(201).json({ url });
   } catch (error) {
     sendFirebaseError(res, error);
   }
+}
+
+// ---------- Images: Vercel Blob instead of base64 inside Firestore documents ----------
+// Inline images made every product read cost ~400 Ko; stored as files they are served by a CDN
+// and the Firestore documents stay a few Ko.
+const blobEnabled = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+const dataUrlPattern = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+=*)$/;
+
+async function storeImage(bytes: Buffer, contentType: string, folder: string): Promise<string> {
+  const extension = contentType === 'image/jpeg' ? 'jpg' : contentType.slice('image/'.length);
+  // Content-addressed name: saving the same image twice reuses the same file.
+  const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 20);
+  const { url } = await put(`${folder}/${hash}.${extension}`, bytes, {
+    access: 'public',
+    contentType,
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    cacheControlMaxAge: 365 * 24 * 60 * 60,
+  });
+  return url;
+}
+
+/** Replaces a base64 data URL by a Blob file URL; any other value is returned unchanged. */
+async function externalizeImage(value: string, folder: string): Promise<string> {
+  const match = blobEnabled ? dataUrlPattern.exec(value) : null;
+  if (!match) return value;
+  return storeImage(Buffer.from(match[2], 'base64'), match[1], folder);
+}
+
+async function withStoredProductImages<P extends { id: string; images?: string[] }>(product: P): Promise<P> {
+  if (!product.images?.length) return product;
+  const folder = `products/${product.id}`;
+  return { ...product, images: await Promise.all(product.images.map((image) => externalizeImage(image, folder))) };
+}
+
+async function withStoredOptionImages(category: ProductOptionCategory): Promise<ProductOptionCategory> {
+  const folder = `options/${category.id}`;
+  return {
+    ...category,
+    values: await Promise.all(category.values.map(async (value) => (
+      value.imageUrl ? { ...value, imageUrl: await externalizeImage(value.imageUrl, folder) } : value
+    ))),
+  };
 }
 
 function isValidService(value: unknown): value is Service {
@@ -333,9 +401,24 @@ function isValidService(value: unknown): value is Service {
 // Admin writes update the copies directly, so Firestore reads only happen on first start.
 const cacheDir = process.env.CATALOGUE_CACHE_DIR
   ?? (process.env.FUNCTION_TARGET || process.env.VERCEL ? null : fileURLToPath(new URL('../.cache', import.meta.url)));
-const cacheFile = (name: string) => (cacheDir ? `${cacheDir}/${name}.json` : null);
+const onVercel = Boolean(process.env.VERCEL);
+// On Vercel, instances share their copies through the Runtime Cache: a cold start reads it
+// instead of Firestore, and a write made on one instance reaches the others within 30 s.
+const sharedStore: SharedStore | null = onVercel
+  ? {
+      get: (key) => getCache().get(key),
+      set: (key, value) => getCache().set(key, value, { ttl: 30 * 24 * 60 * 60 }),
+      delete: (key) => getCache().delete(key),
+      background: (task) => waitUntil(task),
+    }
+  : null;
+const cacheOptions = (name: string) => ({
+  filePath: cacheDir ? `${cacheDir}/${name}.json` : null,
+  shared: sharedStore,
+  memoryTtlMs: onVercel ? 30_000 : Infinity,
+});
 
-const productsCache = new CatalogueCache<Product>('products', cacheFile('products'), async () => {
+const productsCache = new CatalogueCache<Product>('products', cacheOptions('products'), async () => {
   const snapshot = await getDb().collection('products').get();
   const list: Product[] = [];
   snapshot.docs.forEach((doc) => {
@@ -464,7 +547,7 @@ function migrateCarrier(raw: Record<string, unknown>): Carrier | null {
   return isValidCarrier(candidate) ? toCarrier(candidate) : null;
 }
 
-const carriersCache = new CatalogueCache<Carrier>('carriers', cacheFile('carriers'), async () => {
+const carriersCache = new CatalogueCache<Carrier>('carriers', cacheOptions('carriers'), async () => {
   const snapshot = await getDb().collection('Carriers').get();
   const list: Carrier[] = [];
   snapshot.docs.forEach((doc) => {
@@ -484,7 +567,7 @@ async function listCarriers(): Promise<Carrier[]> {
 
 type StoredService = Service & { active?: boolean };
 
-const servicesCache = new CatalogueCache<StoredService>('services', cacheFile('services'), async () => {
+const servicesCache = new CatalogueCache<StoredService>('services', cacheOptions('services'), async () => {
   const snapshot = await getDb().collection('services').get();
   const stored: StoredService[] = [];
   snapshot.docs.forEach((doc) => {
@@ -499,7 +582,7 @@ const servicesCache = new CatalogueCache<StoredService>('services', cacheFile('s
   return stored;
 });
 
-const optionsCache = new CatalogueCache<ProductOptionCategory>('options', cacheFile('options'), async () => {
+const optionsCache = new CatalogueCache<ProductOptionCategory>('options', cacheOptions('options'), async () => {
   const snapshot = await getDb().collection('Options').get();
   return snapshot.docs.map((doc) => doc.data()).filter(isValidOptionCategory);
 });
@@ -515,12 +598,12 @@ function newestFirst(records: StoredRecord[]): StoredRecord[] {
   return [...records].sort((left, right) => (right.createdAt ?? '').localeCompare(left.createdAt ?? ''));
 }
 
-const ordersCache = new CatalogueCache<StoredRecord>('orders', cacheFile('orders'), async () => {
+const ordersCache = new CatalogueCache<StoredRecord>('orders', cacheOptions('orders'), async () => {
   const snapshot = await getDb().collection('orders').orderBy('createdAt', 'desc').limit(500).get();
   return snapshot.docs.map((doc) => toStoredRecord(doc.id, doc.data()));
 });
 
-const quotesCache = new CatalogueCache<StoredRecord>('quotes', cacheFile('quotes'), async () => {
+const quotesCache = new CatalogueCache<StoredRecord>('quotes', cacheOptions('quotes'), async () => {
   const snapshot = await getDb().collection('quotes').orderBy('createdAt', 'desc').limit(500).get();
   return snapshot.docs.map((doc) => toStoredRecord(doc.id, doc.data()));
 });
@@ -551,7 +634,7 @@ function toStoredProfile(id: string, data: Record<string, unknown>, email: strin
 }
 
 // Whole Users collection is read once; profile reads then never touch Firestore.
-const profilesCache = new CatalogueCache<StoredProfile>('profiles', cacheFile('profiles'), async () => {
+const profilesCache = new CatalogueCache<StoredProfile>('profiles', cacheOptions('profiles'), async () => {
   const snapshot = await getDb().collection('Users').get();
   return snapshot.docs.map((doc) => toStoredProfile(doc.id, doc.data(), ''));
 });
@@ -568,7 +651,10 @@ async function listProducts(): Promise<Product[]> {
 
 // Listing responses only need the cover image; the full gallery is served by the detail endpoint.
 function toProductSummary(product: Product): Product {
-  return { ...product, images: product.images?.slice(0, 1) ?? [] };
+  const images = product.images ?? [];
+  // Inline (base64) photos are heavy: only the first one goes in the list.
+  const hasInlineImages = images.some((image) => image.startsWith('data:'));
+  return { ...product, images: hasInlineImages ? images.slice(0, 1) : images };
 }
 
 async function listServices(): Promise<Service[]> {
@@ -876,7 +962,6 @@ app.get('/api/products', async (req, res) => {
       );
     }
 
-    res.set('Cache-Control', 'public, max-age=60');
     res.json(list.map(toProductSummary));
   } catch (error) {
     sendFirebaseError(res, error);
@@ -1026,7 +1111,7 @@ app.post('/api/orders', async (req, res) => {
       status: 'pending',
     };
     await getDb().collection('orders').doc(orderId).set({ ...order, createdAt: FieldValue.serverTimestamp() });
-    if (ordersCache.primed) ordersCache.upsert({ ...order, id: orderId, createdAt: new Date().toISOString() });
+    ordersCache.upsert({ ...order, id: orderId, createdAt: new Date().toISOString() });
     res.status(201).json({
       ok: true,
       orderId,
@@ -1138,7 +1223,7 @@ app.post('/api/quotes', async (req, res) => {
       status: 'new',
     };
     await getDb().collection('quotes').doc(quoteId).set({ ...quote, createdAt: FieldValue.serverTimestamp() });
-    if (quotesCache.primed) quotesCache.upsert({ ...quote, id: quoteId, createdAt: new Date().toISOString() });
+    quotesCache.upsert({ ...quote, id: quoteId, createdAt: new Date().toISOString() });
     res.status(201).json({
       ok: true,
       quoteId,
@@ -1150,7 +1235,18 @@ app.post('/api/quotes', async (req, res) => {
 });
 
 app.use('/api/admin', async (req: Request, res: Response, next: NextFunction) => {
-  if (await requireAdmin(req, res)) next();
+  if (!(await requireAdmin(req, res))) return;
+  if (req.method !== 'GET') {
+    // A successful admin change makes the CDN copies of the public catalogue stale.
+    const json = res.json.bind(res);
+    res.json = (body) => {
+      if (res.statusCode < 400) {
+        safely(() => invalidateByTag(CATALOGUE_CDN_TAG), 'purge du catalogue');
+      }
+      return json(body);
+    };
+  }
+  next();
 });
 
 app.post('/api/admin/products/:id/images', imageUploadParser, async (req, res) => {
@@ -1277,7 +1373,7 @@ app.put('/api/admin/products/:id', async (req, res) => {
       ? req.body.active
       : (existing?.active !== false);
     const productData: Product = {
-      ...req.body,
+      ...(await withStoredProductImages(req.body as Product)),
       active,
     };
     await getDb().collection('products').doc(req.params.id).set({
@@ -1331,7 +1427,7 @@ app.post('/api/admin/products', async (req, res) => {
     }
     const active = typeof req.body.active === 'boolean' ? req.body.active : true;
     const productData: Product = {
-      ...req.body,
+      ...(await withStoredProductImages(req.body as Product)),
       active,
     };
     await getDb().collection('products').doc(req.body.id).set({
@@ -1397,8 +1493,9 @@ app.post('/api/admin/options', async (req, res) => {
       res.status(409).json({ error: 'Cette catégorie existe déjà.' });
       return;
     }
-    await getDb().collection('Options').doc(req.body.id).set(req.body);
-    optionsCache.upsert(req.body);
+    const category = await withStoredOptionImages(req.body);
+    await getDb().collection('Options').doc(category.id).set(category);
+    optionsCache.upsert(category);
     res.status(201).json({ ok: true });
   } catch (error) {
     sendFirebaseError(res, error);
@@ -1411,8 +1508,9 @@ app.put('/api/admin/options/:id', async (req, res) => {
     return;
   }
   try {
-    await getDb().collection('Options').doc(req.params.id).set(req.body);
-    optionsCache.upsert(req.body);
+    const category = await withStoredOptionImages(req.body);
+    await getDb().collection('Options').doc(req.params.id).set(category);
+    optionsCache.upsert(category);
     res.json({ ok: true });
   } catch (error) {
     sendFirebaseError(res, error);
@@ -1639,6 +1737,7 @@ app.get('/api/admin/quotes/:id/file', async (req, res) => {
 
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   console.error('[api]', error);
+  res.set('Vercel-CDN-Cache-Control', 'no-store');
   res.status(500).json({ error: 'Une erreur inattendue est survenue.' });
 });
 
