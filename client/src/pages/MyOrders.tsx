@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Button, Container } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { fetchMyOrders, PAYMENT_METHOD_LABELS, type AdminOrder } from '../api/client';
+import { fetchMyOrders, fetchProducts, PAYMENT_METHOD_LABELS, type AdminOrder } from '../api/client';
 import { InvoicePreviewModal } from '../components/InvoicePreviewModal';
 import { getFirebaseAuth, isFirebaseConfigured, onAuthStateChanged } from '../firebase';
+import type { Product } from '../types';
 import { formatPrice } from '../utils/formatPrice';
+import { getProductImage } from '../utils/productImages';
 
 const STATUS: Record<string, { label: string; className: string }> = {
   pending: { label: 'Reçue', className: 'is-pending' },
@@ -13,17 +15,165 @@ const STATUS: Record<string, { label: string; className: string }> = {
   cancelled: { label: 'Annulée', className: 'is-cancelled' },
 };
 
+/** Steps of the progress bar, in order. */
+const STEPS = [
+  { status: 'pending', label: 'Reçue' },
+  { status: 'processing', label: 'En préparation' },
+  { status: 'completed', label: 'Terminée' },
+];
+
 function dateLabel(value: string | null) {
   return value
-    ? new Date(value).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+    ? new Date(value).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
     : '—';
+}
+
+function itemDetails(item: AdminOrder['items'][number]) {
+  const c = item.customization;
+  return [
+    c?.color,
+    c?.size,
+    c?.text,
+    ...(c?.options ?? []).map((option) => `${option.categoryTitle} : ${option.value}`),
+  ].filter(Boolean) as string[];
+}
+
+function OrderProgress({ status }: { status: string }) {
+  if (status === 'cancelled') {
+    return <div className="mo-cancelled">Cette commande a été annulée.</div>;
+  }
+  const current = Math.max(0, STEPS.findIndex((step) => step.status === status));
+  return (
+    <ol className="mo-progress" aria-label="Avancement de la commande">
+      {STEPS.map((step, index) => (
+        <li
+          key={step.status}
+          className={index < current ? 'is-done' : index === current ? 'is-current' : ''}
+          aria-current={index === current ? 'step' : undefined}
+        >
+          <span className="mo-progress-dot" aria-hidden="true">
+            {index < current || (index === current && step.status === 'completed') ? '✓' : index + 1}
+          </span>
+          <span className="mo-progress-label">{step.label}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** One order of "Mes commandes". */
+export function MyOrderCard({
+  order,
+  productById,
+  onInvoice,
+}: {
+  order: AdminOrder;
+  productById: Map<string, Product>;
+  onInvoice: (order: AdminOrder) => void;
+}) {
+  const imageFor = (item: AdminOrder['items'][number]) => {
+    const product = item.productId ? productById.get(item.productId) : undefined;
+    return getProductImage(product?.slug ?? item.slug ?? '', product?.images);
+  };
+
+  const status = STATUS[order.status] ?? { label: order.status, className: '' };
+  const subtotal = order.subtotal ?? order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  return (
+    <article className="mo-card">
+      <header className="mo-head">
+        <div>
+          <div className="mo-kicker">Commande</div>
+          <div className="mo-number">{order.orderId}</div>
+          <div className="mo-date">
+            Passée le {dateLabel(order.createdAt)} · {itemCount} article{itemCount > 1 ? 's' : ''}
+          </div>
+        </div>
+        <span className={`my-order-status ${status.className}`}>{status.label}</span>
+      </header>
+
+      <OrderProgress status={order.status} />
+
+      <ul className="mo-items">
+        {order.items.map((item, index) => {
+          const details = itemDetails(item);
+          const image = imageFor(item);
+          const product = item.productId ? productById.get(item.productId) : undefined;
+          return (
+            <li className="mo-item" key={`${item.name}-${index}`}>
+              <div className="mo-thumb">
+                {image ? <img src={image} alt="" loading="lazy" /> : <span aria-hidden="true">{item.name.charAt(0)}</span>}
+              </div>
+              <div className="mo-item-body">
+                {product ? (
+                  <Link to={`/produit/${product.slug}`} className="mo-item-name">{item.name}</Link>
+                ) : (
+                  <span className="mo-item-name">{item.name}</span>
+                )}
+                {details.length > 0 && <div className="mo-item-details">{details.join(' · ')}</div>}
+                <div className="mo-item-qty">
+                  {item.quantity} × {formatPrice(item.price)}
+                </div>
+              </div>
+              <div className="mo-item-total">{formatPrice(item.price * item.quantity)}</div>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="mo-bottom">
+        <div className="mo-info">
+          {order.shipping && (
+            <div className="mo-info-block">
+              <div className="mo-info-title">Livraison</div>
+              <div className="mo-info-main">{order.shipping.carrierName}</div>
+              <div className="mo-info-sub">
+                {[order.customer.address, order.customer.city].filter(Boolean).join(', ')}
+              </div>
+              {order.shipping.delay && <div className="mo-info-sub">Délai : {order.shipping.delay}</div>}
+            </div>
+          )}
+          {order.paymentMethod && (
+            <div className="mo-info-block">
+              <div className="mo-info-title">Paiement</div>
+              <div className="mo-info-main">{PAYMENT_METHOD_LABELS[order.paymentMethod]}</div>
+            </div>
+          )}
+        </div>
+
+        <div className="mo-summary">
+          <div className="mo-summary-row"><span>Sous-total</span><span>{formatPrice(subtotal)}</span></div>
+          {order.shipping && (
+            <div className="mo-summary-row">
+              <span>Livraison</span>
+              <span>{order.shipping.price === 0 ? 'Offerte' : formatPrice(order.shipping.price)}</span>
+            </div>
+          )}
+          <div className="mo-summary-row is-total"><span>Total</span><span>{formatPrice(order.total)}</span></div>
+          <Button variant="outline-secondary" size="sm" className="mo-invoice" onClick={() => onInvoice(order)}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+              <path d="M14 3v5h5M9 13h6M9 17h4" />
+            </svg>
+            Voir la facture PDF
+          </Button>
+        </div>
+      </div>
+    </article>
+  );
 }
 
 export function MyOrders() {
   const [orders, setOrders] = useState<AdminOrder[] | null>(null);
+  const [catalogue, setCatalogue] = useState<Product[]>([]);
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [error, setError] = useState('');
   const [invoiceOrder, setInvoiceOrder] = useState<AdminOrder | null>(null);
+
+  useEffect(() => {
+    // Product photos come from the catalogue (already cached by the shop).
+    fetchProducts().then(setCatalogue).catch(() => setCatalogue([]));
+  }, []);
 
   useEffect(() => {
     if (!isFirebaseConfigured) {
@@ -49,6 +199,8 @@ export function MyOrders() {
       unsubscribe();
     };
   }, []);
+
+  const productById = useMemo(() => new Map(catalogue.map((product) => [product.id, product])), [catalogue]);
 
   return (
     <Container className="page-hero pb-5">
@@ -78,78 +230,10 @@ export function MyOrders() {
         </div>
       )}
 
-      <div className="my-orders">
-        {orders?.map((order) => {
-          const status = STATUS[order.status] ?? { label: order.status, className: '' };
-          return (
-            <article className="custom-panel my-order" key={order.orderId}>
-              <header className="my-order-header">
-                <div>
-                  <div className="admin-order-id">{order.orderId}</div>
-                  <div className="admin-order-muted">Passée le {dateLabel(order.createdAt)}</div>
-                </div>
-                <span className={`my-order-status ${status.className}`}>{status.label}</span>
-              </header>
-
-              <ul className="admin-order-items my-order-items">
-                {order.items.map((item, index) => {
-                  const customization = item.customization;
-                  const details = [
-                    customization?.color,
-                    customization?.size,
-                    customization?.text,
-                    ...(customization?.options ?? []).map((option) => `${option.categoryTitle} : ${option.value}`),
-                  ].filter(Boolean) as string[];
-                  return (
-                    <li key={`${item.name}-${index}`}>
-                      <div className="admin-order-item-line">
-                        <span className="admin-order-qty">{item.quantity}×</span>
-                        <span className="admin-order-item-name">{item.name}</span>
-                        <span className="text-nowrap ms-auto">{formatPrice(item.price * item.quantity)}</span>
-                      </div>
-                      {details.length > 0 && (
-                        <div className="admin-order-options">
-                          {details.map((detail) => <span className="admin-order-chip" key={detail}>{detail}</span>)}
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-
-              <footer className="my-order-footer">
-                <div className="my-order-meta">
-                  {order.shipping && (
-                    <div>
-                      <span className="admin-order-muted">Livraison</span>
-                      <div>
-                        {order.shipping.carrierName} · {order.shipping.price === 0 ? 'gratuite' : formatPrice(order.shipping.price)}
-                        {order.customer.city ? ` · ${order.customer.city}` : ''}
-                      </div>
-                    </div>
-                  )}
-                  {order.paymentMethod && (
-                    <div>
-                      <span className="admin-order-muted">Paiement</span>
-                      <div>{PAYMENT_METHOD_LABELS[order.paymentMethod]}</div>
-                    </div>
-                  )}
-                </div>
-                <div className="my-order-total">
-                  <span className="admin-order-muted">Total</span>
-                  <div className="admin-order-total">{formatPrice(order.total)}</div>
-                  <Button size="sm" variant="link" className="admin-order-invoice" onClick={() => setInvoiceOrder(order)}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
-                      <path d="M14 3v5h5M9 13h6M9 17h4" />
-                    </svg>
-                    Facture PDF
-                  </Button>
-                </div>
-              </footer>
-            </article>
-          );
-        })}
+      <div className="mo-list">
+        {orders?.map((order) => (
+          <MyOrderCard key={order.orderId} order={order} productById={productById} onInvoice={setInvoiceOrder} />
+        ))}
       </div>
 
       <InvoicePreviewModal order={invoiceOrder} onHide={() => setInvoiceOrder(null)} />
