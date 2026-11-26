@@ -1,5 +1,8 @@
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { fetchProduct } from '../api/client';
 import type { Product } from '../types';
+import { readCached } from '../utils/localCache';
 import { formatPrice } from '../utils/formatPrice';
 import { getProductImage } from '../utils/productImages';
 
@@ -9,9 +12,32 @@ interface Props {
 
 export function ProductCard({ product }: Props) {
   const image = getProductImage(product.slug, product.images);
+  // The catalogue list only carries the first photo, so the second one is fetched on first hover.
+  const [hoverImage, setHoverImage] = useState<string | undefined>(
+    () => product.images?.[1] ?? readCached<Product>(`product:${product.slug}`)?.images?.[1],
+  );
+  const [hoverImageReady, setHoverImageReady] = useState(false);
+  const requested = useRef(false);
+
+  const loadHoverImage = () => {
+    if (hoverImage || requested.current) return;
+    requested.current = true;
+    fetchProduct(product.slug)
+      .then((full) => setHoverImage(full.images?.[1]))
+      .catch(() => undefined);
+  };
+
   return (
-    <Link to={`/produit/${product.slug}`} className="product-tile">
-      <div className="product-visual" style={{ background: product.imageGradient }}>
+    <Link
+      to={`/produit/${product.slug}`}
+      className="product-tile"
+      onMouseEnter={loadHoverImage}
+      onFocus={loadHoverImage}
+    >
+      <div
+        className={`product-visual${hoverImageReady ? ' has-hover-image' : ''}`}
+        style={{ background: product.imageGradient }}
+      >
         {image && (
           <img
             className="product-image"
@@ -19,6 +45,16 @@ export function ProductCard({ product }: Props) {
             alt={`Photo illustrative : ${product.name}`}
             loading="lazy"
             decoding="async"
+          />
+        )}
+        {hoverImage && (
+          <img
+            className="product-image product-image-hover"
+            src={hoverImage}
+            alt=""
+            aria-hidden="true"
+            decoding="async"
+            onLoad={() => setHoverImageReady(true)}
           />
         )}
       </div>
