@@ -949,6 +949,22 @@ html[data-theme='light'] .product-preview-details {
   tbody td:nth-child(3) {
     min-width: 18rem;
   }
+
+  // STATUT: title, pill and action icons centred.
+  thead th:last-child,
+  tbody td:last-child {
+    text-align: center;
+  }
+
+  tbody td:last-child {
+    .admin-order-status {
+      margin-inline: auto;
+    }
+
+    .admin-order-actions {
+      justify-content: center;
+    }
+  }
 }
 
 .admin-order-id {
