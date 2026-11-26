@@ -227,6 +227,16 @@ a {
     font-size: 0.6rem;
     line-height: 1;
   }
+
+  // Icon-only on desktop; the label shows in the collapsed mobile menu.
+  .nav-link.nav-wishlist {
+    &:hover,
+    &.active {
+      .nav-action-icon {
+        color: #e5484d;
+      }
+    }
+  }
 }
 
 .hero {

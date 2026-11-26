@@ -2,12 +2,14 @@ import { useEffect, useState, type MouseEvent } from 'react';
 import { Container, Nav, Navbar as BsNavbar, Badge } from 'react-bootstrap';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
+import { useWishlist } from '../context/WishlistContext';
 import { getFirebaseAuth, isFirebaseConfigured, onAuthStateChanged } from '../firebase';
 import { AuthModal } from './AuthModal';
 import { formatPrice } from '../utils/formatPrice';
 
 export function Navbar() {
   const { count, total } = useCart();
+  const { count: wishlistCount } = useWishlist();
   const [expanded, setExpanded] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [signedIn, setSignedIn] = useState(false);
@@ -90,6 +92,33 @@ export function Navbar() {
               <span className="nav-action-copy">
                 <span className="nav-action-title">Espace Client</span>
                 <span className="nav-action-detail">Compte et gestion</span>
+              </span>
+            </Nav.Link>
+            <Nav.Link
+              as={NavLink}
+              to="/wishlist"
+              onClick={close}
+              className="nav-action nav-wishlist"
+              aria-label={`Wishlist, ${wishlistCount} produit${wishlistCount > 1 ? 's' : ''}`}
+              title="Ma wishlist"
+            >
+              <span className="nav-action-icon" aria-hidden="true">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="1.15em"
+                  height="1.15em"
+                  fill="currentColor"
+                  viewBox="0 0 16 16"
+                  focusable="false"
+                >
+                  <path d="m8 2.748-.717-.737C5.6.281 2.514.878 1.4 3.053c-.523 1.023-.641 2.5.314 4.385.92 1.815 2.834 3.989 6.286 6.357 3.452-2.368 5.365-4.542 6.286-6.357.955-1.886.838-3.362.314-4.385C13.486.878 10.4.28 8.717 2.01zM8 15C-7.333 4.868 3.279-3.04 7.824 1.143q.09.083.176.171a3 3 0 0 1 .176-.17C12.72-3.042 23.333 4.867 8 15" />
+                </svg>
+                <Badge pill bg="danger" className="nav-action-count">
+                  {wishlistCount}
+                </Badge>
+              </span>
+              <span className="nav-action-copy d-lg-none" aria-hidden="true">
+                <span className="nav-action-title">Wishlist</span>
               </span>
             </Nav.Link>
             <Nav.Link as={NavLink} to="/panier" onClick={close} className="nav-action nav-cart">
