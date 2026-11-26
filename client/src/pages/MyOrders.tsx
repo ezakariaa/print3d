@@ -92,8 +92,6 @@ export function MyOrderCard({
         <span className={`my-order-status ${status.className}`}>{status.label}</span>
       </header>
 
-      <OrderProgress status={order.status} />
-
       <ul className="mo-items">
         {order.items.map((item, index) => {
           const details = itemDetails(item);
@@ -122,6 +120,7 @@ export function MyOrderCard({
       </ul>
 
       <div className="mo-bottom">
+        <div className="mo-left">
         <div className="mo-info">
           {order.shipping && (
             <div className="mo-info-block">
@@ -139,6 +138,9 @@ export function MyOrderCard({
               <div className="mo-info-main">{PAYMENT_METHOD_LABELS[order.paymentMethod]}</div>
             </div>
           )}
+        </div>
+        {/* Progress under the delivery and payment details. */}
+        <OrderProgress status={order.status} />
         </div>
 
         <div className="mo-summary">

@@ -1254,6 +1254,22 @@ html[data-theme='light'] .mo-progress .is-current .mo-progress-dot {
   background: var(--dashboard-row-bg);
 }
 
+.mo-left {
+  min-width: 0;
+
+  // Progress bar placed under "Livraison" and "Paiement".
+  .mo-progress {
+    max-width: 32rem;
+    margin-top: 1.4rem;
+    padding: 1.1rem 0 0;
+    border-top: 1px dashed var(--dashboard-panel-border);
+  }
+
+  .mo-cancelled {
+    margin: 1.25rem 0 0;
+  }
+}
+
 .mo-info {
   display: flex;
   flex-wrap: wrap;
