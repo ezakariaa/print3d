@@ -337,11 +337,19 @@ export function Admin() {
     }
   };
 
+  // Options may have been added or changed in "Gestion des options" since the page loaded.
+  const refreshOptionCategories = () => {
+    fetchAdminOptionCategories()
+      .then(setOptionCategories)
+      .catch((err: unknown) => console.warn('Rechargement des options impossible :', err));
+  };
+
   const openNewProductModal = () => {
     setDraft(emptyProduct());
     setTagInput('');
     setEditingId(null);
     setError('');
+    refreshOptionCategories();
     setShowProductModal(true);
   };
 
@@ -350,6 +358,7 @@ export function Admin() {
     setTagInput('');
     setEditingId(product.id);
     setError('');
+    refreshOptionCategories();
     setShowProductModal(true);
   };
 
@@ -521,6 +530,14 @@ export function Admin() {
     return isValueList && appliesToProduct && (key.includes('couleur') || key.includes('color'));
   });
   const colorOptions = colorCategory?.values ?? [];
+  // Options that can be shown on this product's page: those set for its category
+  // ("Prêt à commander" or "À personnaliser"). Colours have their own picker above.
+  const productOptionChoices = optionCategories.filter((category) => {
+    const key = `${category.id} ${category.title}`.toLowerCase();
+    const isValueList = category.type === undefined || category.type === 'values';
+    const isColor = isValueList && (key.includes('couleur') || key.includes('color'));
+    return !isColor && (category.productCategories?.includes(draft.category) ?? true);
+  });
   const availableColors = colorOptions.filter((option) => !draft.colors.includes(option.label));
 
   const profileInitials = `${profile.firstName.trim().charAt(0)}${profile.lastName.trim().charAt(0)}`
@@ -1417,18 +1434,18 @@ export function Admin() {
                   </div>
                 )}
               </Col>
-              {draft.category === 'customizable' && (
                 <Col xs={12}>
-                  <Form.Label>Options de personnalisation (Gestion des options)</Form.Label>
+                  <Form.Label>Options du produit (Gestion des options)</Form.Label>
                   <div className="form-text mb-2">
-                    Cochez les options issues de <Link to="/admin/options">Gestion des options</Link> à activer pour ce produit :
+                    Cochez les options issues de <Link to="/admin/options">Gestion des options</Link> à afficher sur la fiche de ce produit :
                   </div>
-                  {optionCategories.filter((c) => c.productCategories?.includes('customizable') ?? true).length === 0 ? (
-                    <div className="text-secondary small mb-3">Aucune option configurée pour « À personnaliser » dans Gestion des options.</div>
+                  {productOptionChoices.length === 0 ? (
+                    <div className="text-secondary small mb-3">
+                      Aucune option configurée pour « {draft.category === 'ready' ? 'Prêt à commander' : 'À personnaliser'} » dans Gestion des options.
+                    </div>
                   ) : (
                     <div className="d-flex flex-column gap-2 mb-3">
-                      {optionCategories
-                        .filter((c) => c.productCategories?.includes('customizable') ?? true)
+                      {productOptionChoices
                         .map((category) => {
                           const customOpts = draft.customOptions as Record<string, unknown> | undefined;
                           const optionKey = `opt_${category.id}`;
@@ -1436,6 +1453,7 @@ export function Admin() {
                           return (
                             <Form.Check
                               key={category.id}
+                              id={`product-option-${category.id}`}
                               type="checkbox"
                               label={`${category.title} (${category.type === 'text' ? 'Texte' : category.type === 'image' ? 'Images' : 'Liste'})`}
                               checked={isChecked}
@@ -1452,7 +1470,6 @@ export function Admin() {
                     </div>
                   )}
                 </Col>
-              )}
             </Row>
           </Modal.Body>
           <Modal.Footer>
