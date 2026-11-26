@@ -450,13 +450,23 @@ const sharedStore: SharedStore | null = onVercel
   : null;
 const cacheOptions = { versions: cacheVersions, shared: sharedStore };
 
+function toIsoDate(value: unknown): string | undefined {
+  return value instanceof Timestamp ? value.toDate().toISOString() : undefined;
+}
+
 const productsCache = new CatalogueCache<Product>('products', cacheOptions, async () => {
   const snapshot = await getDb().collection('products').get();
   const list: Product[] = [];
   snapshot.docs.forEach((doc) => {
     const data = doc.data();
     if (!data.deletedAt && !data.deleted) {
-      const item = { ...data, id: data.id || doc.id, active: data.active !== false } as Product;
+      const { createdAt, updatedAt, ...fields } = data;
+      const item = {
+        ...fields,
+        id: data.id || doc.id,
+        active: data.active !== false,
+        createdAt: toIsoDate(createdAt) ?? toIsoDate(updatedAt),
+      } as Product;
       if (isValidProduct(item)) {
         list.push(item);
       }
@@ -1404,12 +1414,17 @@ app.put('/api/admin/products/:id', async (req, res) => {
     const active = typeof req.body.active === 'boolean'
       ? req.body.active
       : (existing?.active !== false);
+    const { createdAt: _clientDate, ...body } = req.body as Product;
     const productData: Product = {
-      ...(await withStoredProductImages(req.body as Product)),
+      ...(await withStoredProductImages(body as Product)),
       active,
+      createdAt: existing?.createdAt,
     };
+    const { createdAt, ...stored } = productData;
     await getDb().collection('products').doc(req.params.id).set({
-      ...productData,
+      ...stored,
+      // set() replaces the whole document: write the creation date back, or it is lost.
+      ...(createdAt ? { createdAt: Timestamp.fromDate(new Date(createdAt)) } : {}),
       updatedAt: FieldValue.serverTimestamp(),
     });
     productsCache.upsert(productData);
@@ -1458,15 +1473,16 @@ app.post('/api/admin/products', async (req, res) => {
       return;
     }
     const active = typeof req.body.active === 'boolean' ? req.body.active : true;
+    const { createdAt: _clientDate, ...body } = req.body as Product;
     const productData: Product = {
-      ...(await withStoredProductImages(req.body as Product)),
+      ...(await withStoredProductImages(body as Product)),
       active,
     };
     await getDb().collection('products').doc(req.body.id).set({
       ...productData,
       createdAt: FieldValue.serverTimestamp(),
     });
-    productsCache.upsert(productData);
+    productsCache.upsert({ ...productData, createdAt: new Date().toISOString() });
     res.status(201).json({ ok: true });
   } catch (error) {
     sendFirebaseError(res, error);

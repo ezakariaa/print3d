@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Col, Container, Form, Row } from 'react-bootstrap';
 import { fetchProducts, onCacheUpdate } from '../api/client';
+import { Paginator, clampPage } from '../components/Paginator';
 import { ProductCard } from '../components/ProductCard';
 import type { Product } from '../types';
 
 type Filter = 'all' | 'ready' | 'customizable';
+
+const PAGE_SIZE = 40;
 
 export function Shop() {
   const [allProducts, setAllProducts] = useState<Product[] | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [q, setQ] = useState('');
   const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,6 +49,17 @@ export function Shop() {
   }, [allProducts, filter, q]);
 
   const loading = allProducts === null && !error;
+
+  // A new filter or search starts again from the first page.
+  useEffect(() => setPage(1), [filter, q]);
+  const currentPage = clampPage(page, products.length, PAGE_SIZE);
+  const pageCount = Math.ceil(products.length / PAGE_SIZE);
+  const pageProducts = products.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const changePage = (next: number) => {
+    setPage(next);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const title = useMemo(() => {
     if (filter === 'ready') return 'Produits prêts';
@@ -94,7 +109,7 @@ export function Shop() {
             </div>
           </Col>
         ))}
-        {products.map((p) => (
+        {pageProducts.map((p) => (
           <Col key={p.id} sm={6} lg={3}>
             <ProductCard product={p} />
           </Col>
@@ -105,6 +120,15 @@ export function Shop() {
           </Col>
         )}
       </Row>
+
+      {pageCount > 1 && (
+        <div className="mt-5 d-flex flex-column align-items-center gap-2">
+          <Paginator page={currentPage} pageCount={pageCount} onChange={changePage} />
+          <small className="text-secondary">
+            {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, products.length)} sur {products.length} produits
+          </small>
+        </div>
+      )}
     </Container>
   );
 }

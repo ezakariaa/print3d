@@ -14,6 +14,8 @@ export interface Product {
   images?: string[];
   tags: string[];
   active?: boolean;
+  /** Creation date (ISO 8601), filled from Firestore. */
+  createdAt?: string;
   customOptions?: {
     text?: boolean;
     color?: boolean;

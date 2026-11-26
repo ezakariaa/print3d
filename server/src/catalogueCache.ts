@@ -39,6 +39,8 @@ interface SharedEntry<T> {
 // a burst of visitors does not turn into a burst of failing reads.
 const RETRY_DELAY_MS = 60_000;
 const NO_VERSION = '0';
+// Bump when the shape of cached items changes, so copies written by older code are ignored.
+const SHARED_FORMAT = 2;
 
 export class CatalogueCache<T extends { id: string }> {
   private items: Map<string, T> | null = null;
@@ -60,7 +62,7 @@ export class CatalogueCache<T extends { id: string }> {
   }
 
   private get sharedKey() {
-    return `catalogue:${this.name}`;
+    return `catalogue:v${SHARED_FORMAT}:${this.name}`;
   }
 
   /** Returns the list, reloading it only when another server changed the collection. */

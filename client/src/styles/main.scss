@@ -2386,3 +2386,43 @@ html[data-theme='light'] .theme-switch-thumb {
 .admin-product-table.carriers-table tbody td {
   vertical-align: top;
 }
+
+// Pagination (shop and admin product list), in the brand colours.
+.brand-pagination {
+  --bs-pagination-color: #{$mist};
+  --bs-pagination-bg: rgba(255, 255, 255, 0.04);
+  --bs-pagination-border-color: rgba(197, 212, 206, 0.16);
+  --bs-pagination-hover-color: #{$mist};
+  --bs-pagination-hover-bg: rgba(18, 184, 160, 0.14);
+  --bs-pagination-hover-border-color: rgba(18, 184, 160, 0.4);
+  --bs-pagination-focus-color: #{$mist};
+  --bs-pagination-focus-bg: rgba(18, 184, 160, 0.14);
+  --bs-pagination-focus-box-shadow: 0 0 0 0.2rem rgba(18, 184, 160, 0.25);
+  --bs-pagination-active-color: #{$ink};
+  --bs-pagination-active-bg: var(--brand-teal);
+  --bs-pagination-active-border-color: var(--brand-teal);
+  --bs-pagination-disabled-color: rgba(197, 212, 206, 0.35);
+  --bs-pagination-disabled-bg: transparent;
+  --bs-pagination-disabled-border-color: rgba(197, 212, 206, 0.1);
+  --bs-pagination-border-radius: 0.6rem;
+  gap: 0.35rem;
+
+  .page-link {
+    min-width: 2.4rem;
+    text-align: center;
+    border-radius: var(--bs-pagination-border-radius) !important;
+    cursor: pointer;
+  }
+}
+
+html[data-theme='light'] .brand-pagination {
+  --bs-pagination-color: #17242d;
+  --bs-pagination-bg: #fff;
+  --bs-pagination-border-color: rgba(23, 36, 45, 0.14);
+  --bs-pagination-hover-color: #17242d;
+  --bs-pagination-hover-bg: rgba(18, 184, 160, 0.1);
+  --bs-pagination-focus-color: #17242d;
+  --bs-pagination-active-color: #fff;
+  --bs-pagination-disabled-color: rgba(23, 36, 45, 0.3);
+  --bs-pagination-disabled-border-color: rgba(23, 36, 45, 0.08);
+}

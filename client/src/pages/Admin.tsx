@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+﻿import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Alert, Button, Col, Container, Form, Modal, Row, Table } from 'react-bootstrap';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -37,6 +37,7 @@ import { flushCartSync } from '../context/CartContext';
 import { getProductImage } from '../utils/productImages';
 import { slugify } from '../utils/slugify';
 import { AuthModal } from '../components/AuthModal';
+import { Paginator, clampPage } from '../components/Paginator';
 import { AdminCarriers } from './AdminCarriers';
 import { AdminOptions } from './AdminOptions';
 
@@ -104,6 +105,14 @@ function dateLabel(value: string | null) {
   return value ? new Date(value).toLocaleString('fr-FR') : '—';
 }
 
+type ProductSortField = 'name' | 'category' | 'material' | 'price' | 'createdAt';
+const PRODUCT_PAGE_SIZES = [25, 50, 100];
+const createdAtFormat = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+function formatCreatedAt(value?: string) {
+  return value ? createdAtFormat.format(new Date(value)) : '—';
+}
+
 export function Admin() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -136,8 +145,66 @@ export function Admin() {
   const [productCategoryFilter, setProductCategoryFilter] = useState('all');
   const [productMaterialFilter, setProductMaterialFilter] = useState('all');
   const [productStatusFilter, setProductStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  const [productSortField, setProductSortField] = useState<'name' | 'category' | 'material' | 'price' | null>(null);
-  const [productSortDirection, setProductSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [productSortField, setProductSortField] = useState<ProductSortField | null>('createdAt');
+  const [productSortDirection, setProductSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [productPageSize, setProductPageSize] = useState<number>(PRODUCT_PAGE_SIZES[0]);
+  const [productPage, setProductPage] = useState(1);
+
+  // Filtered then sorted catalogue, shared by the table, the counters and the pagination.
+  const filteredProducts = useMemo(() => {
+    const term = productSearch.toLowerCase();
+    const list = products.filter((product) => {
+      const matchesSearch = product.name.toLowerCase().includes(term) ||
+        product.description.toLowerCase().includes(term);
+      const matchesCategory = productCategoryFilter === 'all' || product.category === productCategoryFilter;
+      const matchesMaterial = productMaterialFilter === 'all' || product.material === productMaterialFilter;
+      const matchesStatus =
+        productStatusFilter === 'all' ||
+        (productStatusFilter === 'active' && product.active !== false) ||
+        (productStatusFilter === 'inactive' && product.active === false);
+      return matchesSearch && matchesCategory && matchesMaterial && matchesStatus;
+    });
+    if (!productSortField) return list;
+    const direction = productSortDirection === 'asc' ? 1 : -1;
+    const valueOf = (product: Product): string | number => {
+      const value = product[productSortField];
+      // Products without a date sort as the oldest.
+      if (productSortField === 'createdAt') return value ?? '';
+      return typeof value === 'string' ? value.toLowerCase() : (value ?? 0);
+    };
+    return [...list].sort((a, b) => {
+      const valA = valueOf(a);
+      const valB = valueOf(b);
+      if (valA < valB) return -direction;
+      if (valA > valB) return direction;
+      return 0;
+    });
+  }, [products, productSearch, productCategoryFilter, productMaterialFilter, productStatusFilter, productSortField, productSortDirection]);
+
+  // Any filter, sort or page-size change starts again from the first page.
+  useEffect(() => {
+    setProductPage(1);
+  }, [productSearch, productCategoryFilter, productMaterialFilter, productStatusFilter, productSortField, productSortDirection, productPageSize]);
+
+  const currentProductPage = clampPage(productPage, filteredProducts.length, productPageSize);
+  const productPageCount = Math.ceil(filteredProducts.length / productPageSize);
+  const pageProducts = filteredProducts.slice(
+    (currentProductPage - 1) * productPageSize,
+    currentProductPage * productPageSize,
+  );
+
+  const toggleProductSort = (field: ProductSortField) => {
+    if (productSortField === field) {
+      setProductSortDirection(productSortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setProductSortField(field);
+      // Dates read most naturally newest first.
+      setProductSortDirection(field === 'createdAt' ? 'desc' : 'asc');
+    }
+  };
+  const sortArrow = (field: ProductSortField) => (
+    productSortField === field ? (productSortDirection === 'asc' ? '▲' : '▼') : '↕'
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -769,7 +836,7 @@ export function Admin() {
           </div>
           <div className="custom-panel mb-3 p-3">
             <Row className="g-3 align-items-center">
-              <Col md={5}>
+              <Col md={4}>
                 <Form.Control
                   type="text"
                   placeholder="Rechercher un produit par nom ou description..."
@@ -798,14 +865,25 @@ export function Admin() {
                   ))}
                 </Form.Select>
               </Col>
-              <Col md={3}>
+              <Col md={2}>
                 <Form.Select
                   value={productStatusFilter}
                   onChange={(e) => setProductStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
                 >
-                  <option value="all">Tous les statuts (actifs et inactifs)</option>
+                  <option value="all">Tous les statuts</option>
                   <option value="active">Actifs uniquement</option>
                   <option value="inactive">Inactifs uniquement</option>
+                </Form.Select>
+              </Col>
+              <Col md={2}>
+                <Form.Select
+                  aria-label="Nombre de produits par page"
+                  value={productPageSize}
+                  onChange={(e) => setProductPageSize(Number(e.target.value))}
+                >
+                  {PRODUCT_PAGE_SIZES.map((size) => (
+                    <option key={size} value={size}>{size} par page</option>
+                  ))}
                 </Form.Select>
               </Col>
             </Row>
@@ -817,83 +895,40 @@ export function Admin() {
                   <th>Image</th>
                   <th
                     style={{ cursor: 'pointer', userSelect: 'none' }}
-                    onClick={() => {
-                      if (productSortField === 'name') {
-                        setProductSortDirection(productSortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setProductSortField('name');
-                        setProductSortDirection('asc');
-                      }
-                    }}
+                    onClick={() => toggleProductSort('name')}
                   >
-                    Produit {productSortField === 'name' ? (productSortDirection === 'asc' ? '▲' : '▼') : '↕'}
+                    Produit {sortArrow('name')}
                   </th>
                   <th
                     style={{ cursor: 'pointer', userSelect: 'none' }}
-                    onClick={() => {
-                      if (productSortField === 'category') {
-                        setProductSortDirection(productSortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setProductSortField('category');
-                        setProductSortDirection('asc');
-                      }
-                    }}
+                    onClick={() => toggleProductSort('category')}
                   >
-                    Catégorie {productSortField === 'category' ? (productSortDirection === 'asc' ? '▲' : '▼') : '↕'}
+                    Catégorie {sortArrow('category')}
                   </th>
                   <th
                     style={{ cursor: 'pointer', userSelect: 'none' }}
-                    onClick={() => {
-                      if (productSortField === 'material') {
-                        setProductSortDirection(productSortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setProductSortField('material');
-                        setProductSortDirection('asc');
-                      }
-                    }}
+                    onClick={() => toggleProductSort('material')}
                   >
-                    Matériau {productSortField === 'material' ? (productSortDirection === 'asc' ? '▲' : '▼') : '↕'}
+                    Matériau {sortArrow('material')}
                   </th>
                   <th
                     style={{ cursor: 'pointer', userSelect: 'none' }}
-                    onClick={() => {
-                      if (productSortField === 'price') {
-                        setProductSortDirection(productSortDirection === 'asc' ? 'desc' : 'asc');
-                      } else {
-                        setProductSortField('price');
-                        setProductSortDirection('asc');
-                      }
-                    }}
+                    onClick={() => toggleProductSort('price')}
                   >
-                    Prix {productSortField === 'price' ? (productSortDirection === 'asc' ? '▲' : '▼') : '↕'}
+                    Prix {sortArrow('price')}
+                  </th>
+                  <th
+                    style={{ cursor: 'pointer', userSelect: 'none' }}
+                    onClick={() => toggleProductSort('createdAt')}
+                  >
+                    Créé le {sortArrow('createdAt')}
                   </th>
                   <th>Statut</th>
                   <th className="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {products
-                  .filter((product) => {
-                    const matchesSearch = product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-                      product.description.toLowerCase().includes(productSearch.toLowerCase());
-                    const matchesCategory = productCategoryFilter === 'all' || product.category === productCategoryFilter;
-                    const matchesMaterial = productMaterialFilter === 'all' || product.material === productMaterialFilter;
-                    const matchesStatus =
-                      productStatusFilter === 'all' ||
-                      (productStatusFilter === 'active' && product.active !== false) ||
-                      (productStatusFilter === 'inactive' && product.active === false);
-                    return matchesSearch && matchesCategory && matchesMaterial && matchesStatus;
-                  })
-                  .sort((a, b) => {
-                    if (!productSortField) return 0;
-                    let valA: any = a[productSortField];
-                    let valB: any = b[productSortField];
-                    if (typeof valA === 'string') valA = valA.toLowerCase();
-                    if (typeof valB === 'string') valB = valB.toLowerCase();
-                    if (valA < valB) return productSortDirection === 'asc' ? -1 : 1;
-                    if (valA > valB) return productSortDirection === 'asc' ? 1 : -1;
-                    return 0;
-                  })
+                {pageProducts
                   .map((product) => {
                   const image = getProductImage(product.slug, product.images);
                   return (
@@ -922,6 +957,7 @@ export function Admin() {
                       </td>
                       <td className="text-secondary">{product.material}</td>
                       <td className="admin-product-price">{formatPrice(product.price)}</td>
+                      <td className="text-secondary text-nowrap">{formatCreatedAt(product.createdAt)}</td>
                       <td>
                         <Form.Check
                           type="switch"
@@ -990,18 +1026,20 @@ export function Admin() {
                     </tr>
                   );
                 })}
-                {products.filter((product) => {
-                  const matchesSearch = product.name.toLowerCase().includes(productSearch.toLowerCase()) ||
-                    product.description.toLowerCase().includes(productSearch.toLowerCase());
-                  const matchesCategory = productCategoryFilter === 'all' || product.category === productCategoryFilter;
-                  const matchesMaterial = productMaterialFilter === 'all' || product.material === productMaterialFilter;
-                  return matchesSearch && matchesCategory && matchesMaterial;
-                }).length === 0 && (
-                  <tr><td colSpan={7} className="text-secondary">Aucun produit ne correspond aux critères de recherche.</td></tr>
+                {filteredProducts.length === 0 && (
+                  <tr><td colSpan={8} className="text-secondary">Aucun produit ne correspond aux critères de recherche.</td></tr>
                 )}
               </tbody>
             </Table>
           </div>
+          {filteredProducts.length > 0 && (
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
+              <small className="text-secondary">
+                {(currentProductPage - 1) * productPageSize + 1}–{Math.min(currentProductPage * productPageSize, filteredProducts.length)} sur {filteredProducts.length} produits
+              </small>
+              <Paginator page={currentProductPage} pageCount={productPageCount} onChange={setProductPage} />
+            </div>
+          )}
         </section>
       )}
       <Modal
