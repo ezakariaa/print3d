@@ -1044,6 +1044,161 @@ html[data-theme='light'] .product-preview-details {
   white-space: nowrap;
 }
 
+// Shop: header, sticky toolbar (categories, search, sort), popular tags, results line.
+.shop-header {
+  margin-bottom: 1.75rem;
+}
+
+.shop-toolbar {
+  position: sticky;
+  top: 4.75rem;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  padding: 0.55rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 1rem;
+  background: rgba(15, 28, 40, 0.88);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+
+  .shop-tabs {
+    border: 0;
+    padding: 0;
+    background: transparent;
+  }
+}
+
+html[data-theme='light'] .shop-toolbar {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 10px 30px rgba(23, 36, 45, 0.07);
+}
+
+.shop-search {
+  position: relative;
+  flex: 1 1 14rem;
+
+  svg {
+    position: absolute;
+    top: 50%;
+    left: 0.85rem;
+    width: 1.05rem;
+    height: 1.05rem;
+    color: var(--dashboard-muted);
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  .form-control {
+    padding-left: 2.5rem;
+    border-radius: 999px;
+  }
+}
+
+.form-select.shop-sort {
+  flex: 0 0 auto;
+  width: auto;
+  border-radius: 999px;
+  font-size: 0.9rem;
+}
+
+.shop-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+}
+
+.shop-tag {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dashboard-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+
+  &:hover {
+    border-color: var(--brand-teal);
+    color: var(--brand-teal);
+  }
+
+  &.is-active {
+    border-color: var(--brand-teal);
+    background: var(--dashboard-icon-bg);
+    color: var(--brand-teal);
+  }
+}
+
+.shop-results {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  color: var(--dashboard-muted);
+  font-size: 0.9rem;
+
+  strong {
+    color: inherit;
+    color: var(--brand-teal);
+  }
+}
+
+.shop-reset {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brand-teal);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.shop-empty {
+  max-width: 30rem;
+  margin: 1rem auto 0;
+  padding: 2.5rem 1.5rem;
+  text-align: center;
+}
+
+.shop-empty-icon {
+  display: inline-grid;
+  width: 4rem;
+  height: 4rem;
+  margin-bottom: 1rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--dashboard-icon-bg);
+  color: var(--brand-teal);
+
+  svg {
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+}
+
+@media (max-width: 767.98px) {
+  // On phones the bar is three lines high: it scrolls with the page instead of staying on top.
+  .shop-toolbar {
+    position: static;
+
+    .shop-tabs {
+      width: 100%;
+    }
+  }
+
+  .form-select.shop-sort {
+    flex: 1 1 100%;
+  }
+}
+
 // Floating WhatsApp button (bottom right).
 .whatsapp-float {
   position: fixed;
