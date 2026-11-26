@@ -1234,6 +1234,7 @@ app.post('/api/orders', async (req, res) => {
         name: customer.name.trim().slice(0, 120),
         email: customer.email.trim().slice(0, 254),
         phone: typeof customer.phone === 'string' ? customer.phone.slice(0, 40) : '',
+        address: typeof customer.address === 'string' ? customer.address.trim().slice(0, 500) : '',
         note: typeof customer.note === 'string' ? customer.note.slice(0, 2000) : '',
       },
       total,

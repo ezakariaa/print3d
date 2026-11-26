@@ -1,8 +1,11 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Alert, Button, Col, Container, Form, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { placeOrder } from '../api/client';
+import type { User } from 'firebase/auth';
+import { fetchUserProfile, placeOrder, type UserProfile } from '../api/client';
 import { useCart } from '../context/CartContext';
+import { getFirebaseAuth, isFirebaseConfigured, onAuthStateChanged } from '../firebase';
+import { readCached, writeCached } from '../utils/localCache';
 import { formatPrice } from '../utils/formatPrice';
 import { getProductImage } from '../utils/productImages';
 
@@ -11,9 +14,43 @@ export function Cart() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
   const [note, setNote] = useState('');
   const [status, setStatus] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Signed-in customer: fill the form from the account profile (only fields still empty,
+  // so nothing typed is overwritten). Cached copy first, then the server copy.
+  useEffect(() => {
+    if (!isFirebaseConfigured) return;
+    let cancelled = false;
+    const fill = (profile: Partial<UserProfile>, user: User) => {
+      if (cancelled) return;
+      const fullName = [profile.firstName, profile.lastName].map((part) => part?.trim()).filter(Boolean).join(' ');
+      const fullAddress = [profile.address, profile.city, profile.country]
+        .map((part) => part?.trim()).filter(Boolean).join(', ');
+      setName((current) => current || fullName || user.displayName || '');
+      setEmail((current) => current || profile.email || user.email || '');
+      setPhone((current) => current || profile.phone || '');
+      setAddress((current) => current || fullAddress);
+    };
+    const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (user) => {
+      if (!user || user.isAnonymous) return;
+      const cacheKey = `profile:${user.uid}`;
+      const cachedProfile = readCached<UserProfile>(cacheKey);
+      fill(cachedProfile ?? {}, user);
+      fetchUserProfile()
+        .then((profile) => {
+          writeCached(cacheKey, { ...profile, email: profile.email || user.email || '' });
+          fill(profile, user);
+        })
+        .catch(() => undefined);
+    });
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, []);
 
   const onCheckout = async (e: FormEvent) => {
     e.preventDefault();
@@ -22,13 +59,11 @@ export function Cart() {
     try {
       const res = await placeOrder({
         items,
-        customer: { name, email, phone, note },
+        customer: { name, email, phone, address, note },
       });
       setStatus({ type: 'ok', text: res.message });
       clear();
-      setName('');
-      setEmail('');
-      setPhone('');
+      // Contact details stay filled in for a next order; only the note is per order.
       setNote('');
     } catch (err) {
       setStatus({ type: 'err', text: err instanceof Error ? err.message : 'Erreur' });
@@ -151,11 +186,11 @@ export function Cart() {
           <Col lg={5}>
             <Form onSubmit={onCheckout} className="custom-panel">
               <h2 className="h5 mb-3">Vos coordonnées</h2>
-              <Form.Group className="mb-3">
+              <Form.Group className="mb-3" controlId="checkout-name">
                 <Form.Label>Nom</Form.Label>
-                <Form.Control value={name} onChange={(e) => setName(e.target.value)} required />
+                <Form.Control autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} required />
               </Form.Group>
-              <Form.Group className="mb-3">
+              <Form.Group className="mb-3" controlId="checkout-email">
                 <Form.Label>E-mail</Form.Label>
                 <Form.Control
                   type="email"
@@ -164,11 +199,24 @@ export function Cart() {
                   required
                 />
               </Form.Group>
-              <Form.Group className="mb-3">
+              <Form.Group className="mb-3" controlId="checkout-phone">
                 <Form.Label>Téléphone</Form.Label>
-                <Form.Control value={phone} onChange={(e) => setPhone(e.target.value)} />
+                <Form.Control type="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
               </Form.Group>
-              <Form.Group className="mb-3">
+              <Form.Group className="mb-3" controlId="checkout-address">
+                <Form.Label>Adresse de livraison</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  rows={2}
+                  required
+                  maxLength={500}
+                  autoComplete="street-address"
+                  placeholder="N°, rue, quartier, ville"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                />
+              </Form.Group>
+              <Form.Group className="mb-3" controlId="checkout-note">
                 <Form.Label>Note</Form.Label>
                 <Form.Control
                   as="textarea"

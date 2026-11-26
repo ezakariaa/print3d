@@ -776,7 +776,11 @@ export function Admin() {
               {orders.map((order) => (
                 <tr key={order.orderId}>
                   <td>{order.orderId}</td>
-                  <td>{order.customer.name}<br /><small>{order.customer.email}</small></td>
+                  <td>
+                    {order.customer.name}<br /><small>{order.customer.email}</small>
+                    {order.customer.phone && <><br /><small>{order.customer.phone}</small></>}
+                    {order.customer.address && <><br /><small className="text-secondary" style={{ whiteSpace: 'pre-line' }}>{order.customer.address}</small></>}
+                  </td>
                   <td>
                     {order.items.map((item, index) => {
                       const customization = item.customization;
