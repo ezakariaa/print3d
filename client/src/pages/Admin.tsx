@@ -12,7 +12,6 @@ import {
   fetchAdminQuotes,
   fetchAdminUsers,
   fetchUserProfile,
-  PAYMENT_METHOD_LABELS,
   saveAdminService,
   saveAdminProduct,
   fetchAdminUsers as _fetchAdminUsers,
@@ -42,6 +41,7 @@ import { useWishlist } from '../context/WishlistContext';
 import { Paginator, clampPage } from '../components/Paginator';
 import { AdminCarriers } from './AdminCarriers';
 import { AdminOptions } from './AdminOptions';
+import { AdminOrdersTable } from './AdminOrdersTable';
 
 type AdminSection = 'users' | 'orders' | 'products' | 'options' | 'quotes' | 'services' | 'carriers';
 
@@ -770,85 +770,12 @@ export function Admin() {
       )}
 
       {section === 'orders' && (
-        <div className="table-responsive custom-panel">
-          <Table hover variant="dark" className="align-middle mb-0">
-            <thead><tr><th>Commande</th><th>Client</th><th>Articles</th><th>Total</th><th>Date</th><th>Statut</th></tr></thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr key={order.orderId}>
-                  <td>{order.orderId}</td>
-                  <td>
-                    {order.customer.name}<br /><small>{order.customer.email}</small>
-                    {order.customer.phone && <><br /><small>{order.customer.phone}</small></>}
-                    {(order.customer.address || order.customer.city) && (
-                      <><br /><small className="text-secondary" style={{ whiteSpace: 'pre-line' }}>
-                        {[order.customer.address, order.customer.city].filter(Boolean).join(', ')}
-                      </small></>
-                    )}
-                    {order.shipping && (
-                      <><br /><small>
-                        {order.shipping.carrierName} · {order.shipping.price === 0 ? 'livraison gratuite' : formatPrice(order.shipping.price)}
-                      </small></>
-                    )}
-                  </td>
-                  <td>
-                    {order.items.map((item, index) => {
-                      const customization = item.customization;
-                      const details = [
-                        customization?.color,
-                        customization?.size,
-                        customization?.text,
-                      ].filter(Boolean);
-                      return (
-                        <div key={`${item.name}-${index}`}>
-                          {item.quantity} × {item.name}
-                          {(details.length > 0 || customization?.options?.length) && (
-                            <div className="small text-secondary">
-                              {details.join(' · ')}
-                              {customization?.options?.map((option) => (
-                                <span className="d-inline-flex align-items-center gap-2 ms-2" key={option.categoryId}>
-                                  <span>{option.categoryTitle} : {option.value}{option.price ? ` (+${formatPrice(option.price)})` : ''}</span>
-                                  {option.imageUrl && (
-                                    <img
-                                      src={option.imageUrl}
-                                      alt={`Image téléversée pour ${option.categoryTitle}`}
-                                      style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4 }}
-                                    />
-                                  )}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </td>
-                  <td>
-                    {formatPrice(order.total)}
-                    {order.paymentMethod && (
-                      <><br /><small className="text-secondary">{PAYMENT_METHOD_LABELS[order.paymentMethod]}</small></>
-                    )}
-                  </td>
-                  <td>{dateLabel(order.createdAt)}</td>
-                  <td>
-                    <Form.Select value={order.status} onChange={(event) => void changeQuoteStatus(order.orderId, event.target.value)}>
-                      <option value="pending">À traiter</option>
-                      <option value="processing">En préparation</option>
-                      <option value="completed">Terminée</option>
-                      <option value="cancelled">Annulée</option>
-                    </Form.Select>
-                  </td>
-                </tr>
-              ))}
-              {orders.length === 0 && <tr><td colSpan={6} className="text-secondary">Aucune commande enregistrée.</td></tr>}
-            </tbody>
-          </Table>
-        </div>
+        <AdminOrdersTable orders={orders} onStatusChange={(orderId, status) => void changeQuoteStatus(orderId, status)} />
       )}
 
       {section === 'quotes' && (
-        <div className="table-responsive custom-panel">
-          <Table hover variant="dark" className="align-middle mb-0">
+        <div className="table-responsive custom-panel admin-product-panel">
+          <Table hover className="align-middle mb-0 admin-product-table">
             <thead><tr><th>Client</th><th>Projet</th><th>Fichier</th><th>Date</th><th>Statut</th><th></th></tr></thead>
             <tbody>
               {quotes.map((quote) => (

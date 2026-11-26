@@ -935,6 +935,176 @@ html[data-theme='light'] .product-preview-details {
   }
 }
 
+// Orders table (Gestion des commandes): same base as the products table.
+.admin-orders-table {
+  tbody td {
+    vertical-align: top;
+    font-size: 0.9rem;
+  }
+
+  tbody td:nth-child(2) {
+    min-width: 13rem;
+  }
+
+  tbody td:nth-child(3) {
+    min-width: 18rem;
+  }
+}
+
+.admin-order-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--brand-teal);
+  white-space: nowrap;
+}
+
+.admin-order-muted {
+  color: var(--dashboard-muted);
+  font-size: 0.8rem;
+}
+
+.admin-order-link {
+  color: inherit;
+  font-size: 0.82rem;
+  text-decoration: none;
+  opacity: 0.85;
+
+  &:hover {
+    color: var(--brand-teal);
+    opacity: 1;
+    text-decoration: underline;
+  }
+}
+
+.admin-order-address {
+  max-width: 16rem;
+  margin-top: 0.2rem;
+}
+
+.admin-order-note {
+  max-width: 16rem;
+  margin-top: 0.35rem;
+  padding: 0.3rem 0.5rem;
+  border-left: 2px solid var(--brand-teal);
+  border-radius: 0.25rem;
+  background: var(--dashboard-icon-bg);
+  font-size: 0.78rem;
+  font-style: italic;
+}
+
+.admin-order-items {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-order-item-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.admin-order-qty {
+  flex: 0 0 auto;
+  min-width: 1.9rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.35rem;
+  background: var(--dashboard-icon-bg);
+  color: var(--brand-teal);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.admin-order-item-name {
+  font-weight: 600;
+}
+
+.admin-order-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.3rem 0 0 2.35rem;
+}
+
+.admin-order-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 999px;
+  color: var(--dashboard-muted);
+  font-size: 0.74rem;
+
+  img {
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+}
+
+.admin-order-total {
+  font-size: 1rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.admin-order-payment {
+  display: inline-block;
+  margin-top: 0.35rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &.is-cash_on_delivery {
+    background: rgba(212, 175, 55, 0.16);
+    color: #c99a1e;
+  }
+
+  &.is-bank_transfer {
+    background: rgba(59, 130, 246, 0.15);
+    color: #4f8ff7;
+  }
+}
+
+// Status select coloured like a badge (html body: wins over the light theme's .form-select colour).
+html body .form-select.admin-order-status {
+  min-width: 9.5rem;
+  border-width: 1px;
+  font-weight: 600;
+
+  &.is-pending {
+    border-color: rgba(212, 175, 55, 0.6);
+    color: #c99a1e;
+  }
+
+  &.is-processing {
+    border-color: rgba(79, 143, 247, 0.6);
+    color: #4f8ff7;
+  }
+
+  &.is-completed {
+    border-color: rgba(31, 157, 85, 0.6);
+    color: #1f9d55;
+  }
+
+  &.is-cancelled {
+    border-color: rgba(229, 72, 77, 0.6);
+    color: #e5484d;
+  }
+
+  option {
+    color: initial;
+  }
+}
+
 .admin-product-thumb {
   position: relative;
   width: 56px;
