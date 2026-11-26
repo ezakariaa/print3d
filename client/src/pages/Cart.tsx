@@ -54,23 +54,20 @@ export function Cart() {
             {items.map((item) => {
               const key = itemKey(item);
               return (
-                <div key={key} className="cart-row d-flex gap-3">
-                  <div
+                <div key={key} className="cart-row cart-line">
+                  <Link
+                    to={`/produit/${item.slug}`}
                     className="cart-product-visual"
-                    style={{
-                      width: 72,
-                      height: 72,
-                      flexShrink: 0,
-                      borderRadius: 4,
-                      background: item.imageGradient,
-                    }}
+                    style={{ background: item.imageGradient }}
+                    tabIndex={-1}
+                    aria-hidden="true"
                   >
                     {(item.imageUrl || getProductImage(item.slug)) && (
-                      <img src={item.imageUrl || getProductImage(item.slug)} alt={`Photo illustrative : ${item.name}`} />
+                      <img src={item.imageUrl || getProductImage(item.slug)} alt="" />
                     )}
-                  </div>
-                  <div className="flex-grow-1">
-                    <div className="fw-semibold">{item.name}</div>
+                  </Link>
+                  <div className="cart-line-info">
+                    <Link to={`/produit/${item.slug}`} className="cart-line-title">{item.name}</Link>
                     {item.customization && (
                       <div className="small text-secondary">
                         {[
@@ -92,25 +89,56 @@ export function Cart() {
                         ))}
                       </div>
                     )}
-                    <div className="product-price small mt-1">
-                      {formatPrice(item.price * item.quantity)}
-                    </div>
-                    <div className="d-flex align-items-center gap-2 mt-2">
-                      <Form.Control
-                        type="number"
-                        min={1}
-                        style={{ width: 72 }}
-                        value={item.quantity}
-                        onChange={(e) => updateQty(key, Number(e.target.value))}
-                      />
-                      <Button
-                        variant="link"
-                        className="text-secondary p-0"
-                        onClick={() => removeItem(key)}
-                      >
-                        Retirer
-                      </Button>
-                    </div>
+                    <div className="small text-secondary mt-1">{formatPrice(item.price)} / unité</div>
+                  </div>
+                  <div className="product-quantity-selector cart-line-qty">
+                    <button
+                      type="button"
+                      className="product-quantity-btn"
+                      onClick={() => updateQty(key, item.quantity - 1)}
+                      disabled={item.quantity <= 1}
+                      aria-label={`Diminuer la quantité de ${item.name}`}
+                    >
+                      −
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={99}
+                      className="product-quantity-input"
+                      value={item.quantity}
+                      aria-label={`Quantité de ${item.name}`}
+                      onChange={(e) => {
+                        const next = Math.floor(Number(e.target.value));
+                        if (Number.isFinite(next) && next >= 1) updateQty(key, Math.min(99, next));
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="product-quantity-btn"
+                      onClick={() => updateQty(key, item.quantity + 1)}
+                      disabled={item.quantity >= 99}
+                      aria-label={`Augmenter la quantité de ${item.name}`}
+                    >
+                      +
+                    </button>
+                  </div>
+                  <div className="cart-line-end">
+                    <span className="product-price">{formatPrice(item.price * item.quantity)}</span>
+                    <Button
+                      variant="link"
+                      className="admin-icon-btn admin-icon-btn-danger"
+                      title="Retirer du panier"
+                      aria-label={`Retirer ${item.name} du panier`}
+                      onClick={() => removeItem(key)}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4h8v2" />
+                        <path d="M19 6l-1 14H6L5 6" />
+                        <path d="M10 11v6M14 11v6" />
+                      </svg>
+                    </Button>
                   </div>
                 </div>
               );
