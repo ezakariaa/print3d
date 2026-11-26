@@ -959,6 +959,45 @@ html[data-theme='light'] .product-preview-details {
   white-space: nowrap;
 }
 
+.btn.admin-order-invoice {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-top: 0.45rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 999px;
+  color: var(--brand-teal);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+
+  svg {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+
+  &:hover {
+    border-color: var(--brand-teal);
+    background: var(--dashboard-icon-bg);
+    color: var(--brand-teal);
+  }
+}
+
+.invoice-modal .modal-body {
+  max-height: none;
+  overflow: hidden;
+}
+
+.invoice-frame {
+  display: block;
+  width: 100%;
+  height: min(78vh, 60rem);
+  border: 0;
+  background: #525659;
+}
+
 .admin-order-muted {
   color: var(--dashboard-muted);
   font-size: 0.8rem;

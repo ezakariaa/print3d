@@ -1,5 +1,7 @@
-import { Form, Table } from 'react-bootstrap';
+import { useState } from 'react';
+import { Button, Form, Table } from 'react-bootstrap';
 import { PAYMENT_METHOD_LABELS, type AdminOrder } from '../api/client';
+import { InvoicePreviewModal } from '../components/InvoicePreviewModal';
 import { formatPrice } from '../utils/formatPrice';
 
 function dateLabel(value: string | null) {
@@ -13,7 +15,10 @@ interface Props {
 
 /** Orders table of "Gestion des commandes". */
 export function AdminOrdersTable({ orders, onStatusChange }: Props) {
+  const [invoiceOrder, setInvoiceOrder] = useState<AdminOrder | null>(null);
+
   return (
+    <>
     <div className="table-responsive custom-panel admin-product-panel">
       <Table hover className="mb-0 admin-product-table admin-orders-table">
         <thead>
@@ -32,6 +37,19 @@ export function AdminOrdersTable({ orders, onStatusChange }: Props) {
               <td>
                 <div className="admin-order-id">{order.orderId}</div>
                 <div className="admin-order-muted text-nowrap">{dateLabel(order.createdAt)}</div>
+                <Button
+                  size="sm"
+                  variant="link"
+                  className="admin-order-invoice"
+                  onClick={() => setInvoiceOrder(order)}
+                  aria-label={`Aperçu de la facture de la commande ${order.orderId}`}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+                    <path d="M14 3v5h5M9 13h6M9 17h4" />
+                  </svg>
+                  Facture PDF
+                </Button>
               </td>
               <td>
                 <div className="fw-semibold">{order.customer.name}</div>
@@ -128,5 +146,7 @@ export function AdminOrdersTable({ orders, onStatusChange }: Props) {
         </tbody>
       </Table>
     </div>
+    <InvoicePreviewModal order={invoiceOrder} onHide={() => setInvoiceOrder(null)} />
+    </>
   );
 }
