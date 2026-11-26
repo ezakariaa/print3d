@@ -16,6 +16,7 @@ import {
   saveAdminProduct,
   fetchAdminUsers as _fetchAdminUsers,
   updateAdminProductStatus,
+  updateAdminOrder,
   updateAdminQuote,
   updateAdminUserStatus,
   type AdminOrder,
@@ -500,6 +501,20 @@ export function Admin() {
     }
   };
 
+  const changeOrderStatus = async (id: string, status: string) => {
+    const previous = orders.find((item) => item.orderId === id)?.status;
+    // Show the new status right away; put the old one back if the server refuses.
+    setOrders((current) => current.map((item) => item.orderId === id ? { ...item, status } : item));
+    try {
+      await updateAdminOrder(id, status);
+    } catch (err) {
+      if (previous) {
+        setOrders((current) => current.map((item) => item.orderId === id ? { ...item, status: previous } : item));
+      }
+      showError(err);
+    }
+  };
+
   const changeQuoteStatus = async (id: string, status: string) => {
     try {
       await updateAdminQuote(id, status);
@@ -782,7 +797,7 @@ export function Admin() {
       )}
 
       {section === 'orders' && (
-        <AdminOrdersTable orders={orders} onStatusChange={(orderId, status) => void changeQuoteStatus(orderId, status)} />
+        <AdminOrdersTable orders={orders} onStatusChange={(orderId, status) => void changeOrderStatus(orderId, status)} />
       )}
 
       {section === 'quotes' && (
