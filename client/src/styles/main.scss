@@ -1168,28 +1168,43 @@ html[data-theme='light'] .product-preview-details {
 }
 
 // Status select coloured like a badge (html body: wins over the light theme's .form-select colour).
+// Same pill as the customer's status badge (.my-order-status), still a dropdown.
 html body .form-select.admin-order-status {
-  min-width: 9.5rem;
-  border-width: 1px;
-  font-weight: 600;
+  width: auto;
+  min-width: 0;
+  min-height: 0;
+  padding: 0.3rem 1.9rem 0.3rem 0.8rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background-color: transparent;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%238a979e' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 0.65rem center;
+  background-size: 10px 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: none;
+
+  &:focus {
+    box-shadow: 0 0 0 3px rgba(18, 184, 160, 0.2);
+  }
 
   &.is-pending {
-    border-color: rgba(212, 175, 55, 0.6);
     color: #c99a1e;
   }
 
   &.is-processing {
-    border-color: rgba(79, 143, 247, 0.6);
     color: #4f8ff7;
   }
 
   &.is-completed {
-    border-color: rgba(31, 157, 85, 0.6);
     color: #1f9d55;
   }
 
   &.is-cancelled {
-    border-color: rgba(229, 72, 77, 0.6);
     color: #e5484d;
   }
 
