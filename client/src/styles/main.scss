@@ -228,6 +228,40 @@ a {
     line-height: 1;
   }
 
+  // Phones and tablets: wishlist and cart icons next to the menu button.
+  .nav-quick {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .nav-quick-link {
+    position: relative;
+    display: grid;
+    width: 2.5rem;
+    height: 2.5rem;
+    place-items: center;
+    border-radius: 0.6rem;
+    color: var(--brand-mist);
+    transition: color 0.2s ease, background-color 0.2s ease;
+
+    svg {
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+
+    .nav-action-count {
+      top: 0.1rem;
+      right: 0.05rem;
+    }
+
+    &:hover,
+    &:focus-visible {
+      color: var(--brand-teal);
+      background: rgba(18, 184, 160, 0.1);
+    }
+  }
+
   // Icon-only on desktop; the label shows in the collapsed mobile menu.
   .nav-link.nav-wishlist {
     &:hover,
@@ -393,6 +427,41 @@ a {
 }
 
 // Card + wishlist heart: the lift on hover is on the wrapper so the heart moves with the card.
+// Phones: two products per row, so the cards get tighter.
+@media (max-width: 575.98px) {
+  .product-tile-wrap {
+    .product-meta {
+      padding-inline: 0.15rem;
+    }
+
+    .product-tag {
+      font-size: 0.62rem;
+      letter-spacing: 0.04em;
+    }
+
+    h3 {
+      font-size: 0.92rem;
+      line-height: 1.25;
+    }
+
+    // Short description hidden: the name and the price are what matter at this size.
+    .product-meta p {
+      display: none;
+    }
+
+    .product-price {
+      font-size: 0.95rem;
+    }
+  }
+
+  .wishlist-toggle {
+    top: 0.45rem;
+    right: 0.45rem;
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
 .product-tile-wrap {
   position: relative;
   height: 100%;

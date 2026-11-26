@@ -42,7 +42,7 @@ export function Customize() {
 
       <Row className="gy-4">
         {products.map((p) => (
-          <Col key={p.id} sm={6} lg={3}>
+          <Col key={p.id} xs={6} lg={3}>
             <ProductCard product={p} />
           </Col>
         ))}

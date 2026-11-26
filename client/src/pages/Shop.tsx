@@ -100,7 +100,7 @@ export function Shop() {
 
       <Row className="gy-4">
         {loading && Array.from({ length: 8 }, (_, index) => (
-          <Col key={index} sm={6} lg={3}>
+          <Col key={index} xs={6} lg={3}>
             <div className="product-skeleton" aria-hidden="true">
               <div className="product-skeleton-visual" />
               <div className="product-skeleton-line is-short" />
@@ -110,7 +110,7 @@ export function Shop() {
           </Col>
         ))}
         {pageProducts.map((p) => (
-          <Col key={p.id} sm={6} lg={3}>
+          <Col key={p.id} xs={6} lg={3}>
             <ProductCard product={p} />
           </Col>
         ))}
