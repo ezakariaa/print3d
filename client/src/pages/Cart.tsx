@@ -320,7 +320,7 @@ export function Cart() {
                     onChange={(e) => setAddress(e.target.value)}
                   />
                 </Form.Group>
-                <Form.Group className="mb-3" controlId="checkout-city">
+                <Form.Group controlId="checkout-city">
                   <Form.Label>Ville</Form.Label>
                   <Form.Control
                     required
@@ -334,15 +334,6 @@ export function Cart() {
                   <datalist id="checkout-cities">
                     {knownCities.map((name) => <option key={name} value={name} />)}
                   </datalist>
-                </Form.Group>
-                <Form.Group controlId="checkout-note">
-                  <Form.Label>Note</Form.Label>
-                  <Form.Control
-                    as="textarea"
-                    rows={2}
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                  />
                 </Form.Group>
               </section>
 
@@ -425,6 +416,19 @@ export function Cart() {
                 <p className="text-secondary small mb-3">
                   Le paiement en ligne n’est pas encore activé. L’atelier vous recontactera pour la suite.
                 </p>
+                <Form.Group className="mb-3" controlId="checkout-note">
+                  <Form.Label>
+                    Note ou commentaire <span className="fw-normal text-secondary">(facultatif)</span>
+                  </Form.Label>
+                  <Form.Control
+                    as="textarea"
+                    rows={2}
+                    maxLength={2000}
+                    placeholder="Une précision pour l’atelier ou le livreur ?"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                </Form.Group>
                 <Button type="submit" className="btn-brand w-100" disabled={loading || !canOrder}>
                   {loading ? 'Envoi…' : `Valider la commande · ${formatPrice(total + shippingPrice)}`}
                 </Button>
