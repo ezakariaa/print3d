@@ -646,6 +646,24 @@ const carriersCache = new CatalogueCache<Carrier>('carriers', cacheOptions, asyn
   return list;
 });
 
+/** City name compared without accents, case or punctuation ("Fès" = "fes", "Salé" = "SALE"). */
+function normalizeCity(city: string) {
+  return city.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/**
+ * Delivery price and delay of a carrier for a city and a cart subtotal,
+ * or null when the carrier does not serve that city.
+ */
+function shippingQuote(carrier: Carrier, city: string, subtotal: number) {
+  const wanted = normalizeCity(city);
+  if (!wanted) return null;
+  const zone = carrier.zones.find((item) => item.cities.some((name) => normalizeCity(name) === wanted));
+  if (!zone) return null;
+  const free = carrier.freeFrom !== null && subtotal >= carrier.freeFrom;
+  return { price: free ? 0 : zone.price, delay: zone.delay || carrier.delay };
+}
+
 /** Cached carriers, normalised (the on-disk copy may still hold the first format). */
 async function listCarriers(): Promise<Carrier[]> {
   return (await carriersCache.list())
@@ -1145,7 +1163,7 @@ app.post('/api/contact', (req, res) => {
 });
 
 app.post('/api/orders', async (req, res) => {
-  const { items, customer } = req.body ?? {};
+  const { items, customer, carrierId } = req.body ?? {};
   if (!Array.isArray(items) || items.length === 0) {
     res.status(400).json({ error: 'Le panier est vide.' });
     return;
@@ -1154,11 +1172,19 @@ app.post('/api/orders', async (req, res) => {
     res.status(400).json({ error: 'Coordonnées client incomplètes.' });
     return;
   }
+  const city = typeof customer.city === 'string' ? customer.city.trim().slice(0, 120) : '';
 
   let products: Product[];
   let optionCategories: ProductOptionCategory[];
+  let activeCarriers: Carrier[];
   try {
-    [products, optionCategories] = await Promise.all([listProducts(), listOptionCategories()]);
+    let carriers: Carrier[];
+    [products, optionCategories, carriers] = await Promise.all([
+      listProducts(),
+      listOptionCategories(),
+      listCarriers(),
+    ]);
+    activeCarriers = carriers.filter((carrier) => carrier.active);
   } catch (error) {
     sendFirebaseError(res, error);
     return;
@@ -1224,9 +1250,30 @@ app.post('/api/orders', async (req, res) => {
     return;
   }
 
+  // Delivery: the carrier chosen by the customer, priced for their city (never trusted from the browser).
+  const subtotal = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  let shipping: { carrierId: string; carrierName: string; price: number; delay: string } | null = null;
+  if (activeCarriers.length > 0) {
+    const carrier = activeCarriers.find((item) => item.id === carrierId);
+    if (!carrier) {
+      res.status(400).json({ error: 'Choisissez un transporteur.' });
+      return;
+    }
+    if (!city) {
+      res.status(400).json({ error: 'Indiquez votre ville de livraison.' });
+      return;
+    }
+    const quote = shippingQuote(carrier, city, subtotal);
+    if (!quote) {
+      res.status(400).json({ error: `${carrier.name} ne livre pas à ${city}. Choisissez un autre transporteur ou vérifiez la ville.` });
+      return;
+    }
+    shipping = { carrierId: carrier.id, carrierName: carrier.name, price: quote.price, delay: quote.delay };
+  }
+
   try {
     const orderId = `3A-${randomUUID().slice(0, 8).toUpperCase()}`;
-    const total = orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const total = subtotal + (shipping?.price ?? 0);
     const order = {
       orderId,
       items: orderItems,
@@ -1235,8 +1282,11 @@ app.post('/api/orders', async (req, res) => {
         email: customer.email.trim().slice(0, 254),
         phone: typeof customer.phone === 'string' ? customer.phone.slice(0, 40) : '',
         address: typeof customer.address === 'string' ? customer.address.trim().slice(0, 500) : '',
+        city,
         note: typeof customer.note === 'string' ? customer.note.slice(0, 2000) : '',
       },
+      subtotal,
+      shipping,
       total,
       status: 'pending',
     };

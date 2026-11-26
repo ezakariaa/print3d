@@ -100,7 +100,9 @@ export function placeOrder(payload: {
     quantity: number;
     customization?: CartCustomization;
   }>;
-  customer: { name: string; email: string; phone?: string; address?: string; note?: string };
+  customer: { name: string; email: string; phone?: string; address?: string; city?: string; note?: string };
+  /** Chosen carrier; delivery price is computed by the server. */
+  carrierId?: string;
 }) {
   return request<{ ok: boolean; orderId: string; message: string }>('/orders', {
     method: 'POST',
@@ -116,7 +118,9 @@ export interface AdminOrder {
     price: number;
     customization?: CartCustomization;
   }>;
-  customer: { name: string; email: string; phone?: string; address?: string; note?: string };
+  customer: { name: string; email: string; phone?: string; address?: string; city?: string; note?: string };
+  subtotal?: number;
+  shipping?: { carrierId: string; carrierName: string; price: number; delay: string } | null;
   total: number;
   status: string;
   createdAt: string | null;

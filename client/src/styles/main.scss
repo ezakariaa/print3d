@@ -2068,6 +2068,143 @@ html:not([data-theme='light']) {
   padding-block: 1.25rem;
 }
 
+// Cart totals under the lines.
+.cart-summary {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+.cart-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--dashboard-muted);
+
+  &.is-total {
+    align-items: baseline;
+    margin-top: 0.35rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--dashboard-panel-border);
+    color: inherit;
+    font-weight: 700;
+
+    .product-price {
+      font-size: 1.5rem;
+    }
+  }
+}
+
+// Checkout column: 1 personal details · 2 carrier and delivery price · 3 payment.
+.checkout-panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.checkout-step {
+  padding: 1.35rem 1.5rem;
+
+  + .checkout-step {
+    border-top: 1px solid var(--dashboard-panel-border);
+  }
+}
+
+.checkout-step-title {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1.1rem;
+  font-size: 1.05rem;
+}
+
+.checkout-step-number {
+  display: grid;
+  flex: 0 0 1.75rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--brand-teal);
+  color: #071018;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.checkout-carriers {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.checkout-carrier {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 0.75rem;
+  background: var(--dashboard-row-bg);
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  .form-check-input {
+    flex: 0 0 auto;
+    margin: 0;
+
+    &:checked {
+      border-color: var(--brand-teal);
+      background-color: var(--brand-teal);
+    }
+  }
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--brand-teal) 55%, transparent);
+  }
+
+  &.is-selected {
+    border-color: var(--brand-teal);
+    box-shadow: 0 0 0 3px rgba(18, 184, 160, 0.15);
+  }
+
+  &.is-unavailable .checkout-carrier-price {
+    color: #e5484d;
+    font-size: 0.8rem;
+  }
+}
+
+.checkout-carrier-body {
+  display: grid;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.checkout-carrier-name {
+  font-weight: 700;
+}
+
+.checkout-carrier-detail {
+  color: var(--dashboard-muted);
+  font-size: 0.8rem;
+
+  &:empty {
+    display: none;
+  }
+}
+
+.checkout-carrier-price {
+  flex: 0 0 auto;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.checkout-shipping-result {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 0.6rem;
+  background: var(--dashboard-icon-bg);
+  font-size: 0.88rem;
+}
+
 // Cart line: photo · name/options · quantity (− n +) · line total and remove.
 .cart-line {
   display: grid;

@@ -779,7 +779,16 @@ export function Admin() {
                   <td>
                     {order.customer.name}<br /><small>{order.customer.email}</small>
                     {order.customer.phone && <><br /><small>{order.customer.phone}</small></>}
-                    {order.customer.address && <><br /><small className="text-secondary" style={{ whiteSpace: 'pre-line' }}>{order.customer.address}</small></>}
+                    {(order.customer.address || order.customer.city) && (
+                      <><br /><small className="text-secondary" style={{ whiteSpace: 'pre-line' }}>
+                        {[order.customer.address, order.customer.city].filter(Boolean).join(', ')}
+                      </small></>
+                    )}
+                    {order.shipping && (
+                      <><br /><small>
+                        {order.shipping.carrierName} · {order.shipping.price === 0 ? 'livraison gratuite' : formatPrice(order.shipping.price)}
+                      </small></>
+                    )}
                   </td>
                   <td>
                     {order.items.map((item, index) => {
