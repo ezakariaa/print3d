@@ -3,7 +3,7 @@ import { Alert, Button, Col, Container, Form, Row } from 'react-bootstrap';
 import { Link, useParams } from 'react-router-dom';
 import { fetchOptionCategories, fetchProduct } from '../api/client';
 import { useCart } from '../context/CartContext';
-import type { CartCustomization, Product, ProductOptionCategory } from '../types';
+import type { CartCustomization, Product, ProductOptionCategory, ProductOptionValue } from '../types';
 import { compressImageToDataUrl } from '../utils/compressImage';
 import { formatPrice } from '../utils/formatPrice';
 import { getProductImage } from '../utils/productImages';
@@ -12,6 +12,18 @@ function isColorOptionCategory(category: ProductOptionCategory) {
   if (category.type !== undefined && category.type !== 'values') return false;
   const key = `${category.id} ${category.title}`.toLowerCase();
   return key.includes('couleur') || key.includes('color');
+}
+
+/** Extra price of an option value, or 0 when the category has no priced values. */
+function valueExtra(category: ProductOptionCategory | undefined, value: ProductOptionValue | undefined) {
+  if (!category?.pricedValues || !value || typeof value.price !== 'number' || !Number.isFinite(value.price)) return 0;
+  return Math.max(0, value.price);
+}
+
+/** Label suffix shown next to a value with an extra price, e.g. " (+20,00 DH)". */
+function extraLabel(category: ProductOptionCategory, value: ProductOptionValue) {
+  const extra = valueExtra(category, value);
+  return extra > 0 ? ` (+${formatPrice(extra)})` : '';
 }
 
 export function ProductDetail() {
@@ -91,6 +103,24 @@ export function ProductDetail() {
     }
   };
 
+  // Product price plus the extra price of the chosen values (same rule as the server).
+  const unitPrice = (() => {
+    if (!product) return 0;
+    const applicable = optionCategories.filter(
+      (category) => category.productCategories?.includes(product.category) ?? true,
+    );
+    let extra = 0;
+    for (const category of applicable) {
+      if (isColorOptionCategory(category) || category.type === 'text') continue;
+      extra += valueExtra(category, category.values.find((value) => value.id === selectedOptions[category.id]));
+    }
+    const colorCategory = applicable.find(isColorOptionCategory);
+    if (color && colorCategory) {
+      extra += valueExtra(colorCategory, colorCategory.values.find((value) => value.label === color));
+    }
+    return product.price + extra;
+  })();
+
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!product) return;
@@ -135,11 +165,14 @@ export function ProductDetail() {
 
       const selectedValue = category.values.find((value) => value.id === selectedOptions[category.id]);
       if (selectedValue) {
+        const extra = valueExtra(category, selectedValue);
         optionSelections.push({
           categoryId: category.id,
           categoryTitle: category.title,
           type: category.type ?? 'values',
           value: selectedValue.label,
+          valueId: selectedValue.id,
+          ...(extra > 0 ? { price: extra } : {}),
         });
       }
     }
@@ -153,7 +186,7 @@ export function ProductDetail() {
       productId: product.id,
       slug: product.slug,
       name: product.name,
-      price: product.price,
+      price: unitPrice,
       imageGradient: product.imageGradient,
       imageUrl: getProductImage(product.slug, product.images),
       quantity: Math.max(1, quantity),
@@ -285,7 +318,10 @@ export function ProductDetail() {
             <p className="product-subtitle">{product.description}</p>
 
             <div className="product-price-row">
-              <span className="product-price-value">{formatPrice(product.price)}</span>
+              <span className="product-price-value">{formatPrice(unitPrice)}</span>
+              {unitPrice > product.price && (
+                <span className="product-price-note">dont options +{formatPrice(unitPrice - product.price)}</span>
+              )}
               <span className="product-price-note">Impression {product.material} · fabriqué à la commande</span>
             </div>
 
@@ -299,6 +335,7 @@ export function ProductDetail() {
                 <div className="product-swatches">
                   {product.colors.map((c) => {
                     const option = colorOptions.find((item) => item.label === c);
+                    const colorCategory = applicableOptionCategories.find(isColorOptionCategory);
                     const selected = c === color;
                     return (
                       <button
@@ -312,7 +349,7 @@ export function ProductDetail() {
                         {option?.imageUrl
                           ? <img src={option.imageUrl} alt="" />
                           : <span className="product-swatch-fallback">{c.charAt(0).toUpperCase()}</span>}
-                        <span className="product-swatch-label">{c}</span>
+                        <span className="product-swatch-label">{c}{colorCategory && option ? extraLabel(colorCategory, option) : ''}</span>
                       </button>
                     );
                   })}
@@ -364,7 +401,7 @@ export function ProductDetail() {
                             ) : (
                               <span className="product-swatch-fallback">{value.label.charAt(0).toUpperCase()}</span>
                             )}
-                            <span className="product-swatch-label">{value.label}</span>
+                            <span className="product-swatch-label">{value.label}{extraLabel(category, value)}</span>
                           </button>
                         );
                       })}
@@ -391,7 +428,7 @@ export function ProductDetail() {
                           {category.type === 'image' ? 'Choisir une image prédéfinie…' : 'Choisir une option…'}
                         </option>
                         {category.values.map((value) => (
-                          <option key={value.id} value={value.id}>{value.label}</option>
+                          <option key={value.id} value={value.id}>{value.label}{extraLabel(category, value)}</option>
                         ))}
                       </Form.Select>
                       {category.type === 'image' && (

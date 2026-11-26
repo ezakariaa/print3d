@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
-import { Alert, Button, Form, Modal } from 'react-bootstrap';
+import { Alert, Button, Form, InputGroup, Modal } from 'react-bootstrap';
 import {
   deleteAdminOptionCategory,
   fetchAdminOptionCategories,
@@ -13,6 +13,7 @@ import type {
   ProductOptionValue,
 } from '../types';
 import { compressImageToDataUrl } from '../utils/compressImage';
+import { formatPrice } from '../utils/formatPrice';
 import { slugify } from '../utils/slugify';
 
 const emptyCategory = (): ProductOptionCategory => ({
@@ -122,16 +123,22 @@ export function AdminOptions() {
     setLoading(true);
     setError('');
     try {
-      const values = await Promise.all(draft.values.map(async (value) => {
+      const pricedValues = showValues && Boolean(draft.pricedValues);
+      const values = await Promise.all(draft.values.map(async ({ price, ...value }) => {
+        // Prices are kept only while "Prix supplémentaire" is ticked; an empty price means no extra.
+        const priced = pricedValues && typeof price === 'number' && Number.isFinite(price) && price > 0
+          ? { ...value, price: Math.round(price * 100) / 100 }
+          : value;
         const file = imageFiles[value.id];
-        if (!file) return value;
-        return { ...value, imageUrl: await compressImageToDataUrl(file, { maxSize: 256, quality: 0.85 }) };
+        if (!file) return priced;
+        return { ...priced, imageUrl: await compressImageToDataUrl(file, { maxSize: 256, quality: 0.85 }) };
       }));
       await saveAdminOptionCategory({
         ...draft,
         id,
         title: draft.title.trim(),
         values,
+        pricedValues,
       }, editingId === null);
       invalidateCache('options');
       setShowModal(false);
@@ -239,6 +246,9 @@ export function AdminOptions() {
                     <div className="option-value-card" key={value.id}>
                       {value.imageUrl && <img src={value.imageUrl} alt="" />}
                       <span>{value.label}</span>
+                      {category.pricedValues && value.price ? (
+                        <span className="option-value-extra">+{formatPrice(value.price)}</span>
+                      ) : null}
                     </div>
                   ))
                 )}
@@ -371,7 +381,15 @@ export function AdminOptions() {
             {showValues && (
               <>
                 <div className="d-flex justify-content-between align-items-center gap-3 mb-2">
-                  <h3 className="h6 mb-0">Valeurs de l’option</h3>
+                  <h3 className="h6 mb-0 me-auto">Valeurs de l’option</h3>
+                  <Form.Check
+                    type="checkbox"
+                    id="option-priced-values"
+                    className="mb-0"
+                    label="Prix supplémentaire"
+                    checked={Boolean(draft.pricedValues)}
+                    onChange={(event) => setDraft((current) => ({ ...current, pricedValues: event.target.checked }))}
+                  />
                   <Button
                     type="button"
                     size="sm"
@@ -396,6 +414,25 @@ export function AdminOptions() {
                           onChange={(event) => updateValue(value.id, { label: event.target.value })}
                           placeholder={`Valeur ${index + 1} (ex. Rouge)`}
                         />
+                        {draft.pricedValues && (
+                          <InputGroup className="option-value-price">
+                            <InputGroup.Text>+</InputGroup.Text>
+                            <Form.Control
+                              type="number"
+                              min={0}
+                              max={100000}
+                              step="0.01"
+                              inputMode="decimal"
+                              value={value.price ?? ''}
+                              placeholder="0"
+                              aria-label={`Prix supplémentaire pour ${value.label || `la valeur ${index + 1}`}`}
+                              onChange={(event) => updateValue(value.id, {
+                                price: event.target.value === '' ? undefined : Number(event.target.value),
+                              })}
+                            />
+                            <InputGroup.Text>DH</InputGroup.Text>
+                          </InputGroup>
+                        )}
                         {draft.values.length > 1 && (
                           <Button
                             type="button"

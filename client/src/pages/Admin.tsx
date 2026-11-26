@@ -776,7 +776,7 @@ export function Admin() {
                               {details.join(' · ')}
                               {customization?.options?.map((option) => (
                                 <span className="d-inline-flex align-items-center gap-2 ms-2" key={option.categoryId}>
-                                  <span>{option.categoryTitle} : {option.value}</span>
+                                  <span>{option.categoryTitle} : {option.value}{option.price ? ` (+${formatPrice(option.price)})` : ''}</span>
                                   {option.imageUrl && (
                                     <img
                                       src={option.imageUrl}

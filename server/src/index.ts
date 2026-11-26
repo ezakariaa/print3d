@@ -15,7 +15,7 @@ import {
   products as defaultProducts,
   type Product,
 } from './data/products.js';
-import type { ProductOptionCategory } from './data/options.js';
+import type { ProductOptionCategory, ProductOptionValue } from './data/options.js';
 import { services as defaultServices, type Service } from './data/services.js';
 import { CatalogueCache, type SharedStore, type VersionSource } from './catalogueCache.js';
 
@@ -290,9 +290,56 @@ function isValidOptionCategory(value: unknown): value is ProductOptionCategory {
       typeof option.label === 'string' &&
       option.label.trim().length > 0 &&
       option.label.length <= 120 &&
-      (option.imageUrl === undefined || isValidOptionImage(option.imageUrl))
-  )) : true)
+      (option.imageUrl === undefined || isValidOptionImage(option.imageUrl)) &&
+      (option.price === undefined || isValidPrice(option.price))
+  )) : true) &&
+    (category.pricedValues === undefined || typeof category.pricedValues === 'boolean')
   );
+}
+
+function isColorOptionCategory(category: ProductOptionCategory) {
+  if (category.type !== undefined && category.type !== 'values') return false;
+  const key = `${category.id} ${category.title}`.toLowerCase();
+  return key.includes('couleur') || key.includes('color');
+}
+
+/** Extra price of one option value, or 0 when the category has no priced values. */
+function optionValuePrice(category: ProductOptionCategory, value: ProductOptionValue | undefined) {
+  if (!category.pricedValues || !value || !isValidPrice(value.price)) return 0;
+  return value.price;
+}
+
+/**
+ * Sum of the extra prices of the chosen option values, recomputed from the catalogue:
+ * the price sent by the browser is never trusted.
+ */
+function optionsSurcharge(product: Product, customization: unknown, categories: ProductOptionCategory[]) {
+  if (!customization || typeof customization !== 'object') return 0;
+  const { color, options } = customization as { color?: unknown; options?: unknown };
+  const applicable = categories.filter(
+    (category) => category.productCategories?.includes(product.category) ?? true,
+  );
+  let surcharge = 0;
+  const counted = new Set<string>();
+  if (Array.isArray(options)) {
+    for (const option of options) {
+      if (!option || typeof option !== 'object') continue;
+      const { categoryId, value, valueId } = option as { categoryId?: unknown; value?: unknown; valueId?: unknown };
+      const category = applicable.find((item) => item.id === categoryId);
+      if (!category || counted.has(category.id)) continue;
+      counted.add(category.id);
+      const chosen = category.values.find((item) => item.id === valueId)
+        ?? category.values.find((item) => item.label === value);
+      surcharge += optionValuePrice(category, chosen);
+    }
+  }
+  if (typeof color === 'string' && color) {
+    const colorCategory = applicable.find(isColorOptionCategory);
+    if (colorCategory && !counted.has(colorCategory.id)) {
+      surcharge += optionValuePrice(colorCategory, colorCategory.values.find((item) => item.label === color));
+    }
+  }
+  return surcharge;
 }
 
 // Images are stored inline as base64 data URLs (≤ 500 Ko binary ≈ 700 Ko encoded).
@@ -1109,8 +1156,9 @@ app.post('/api/orders', async (req, res) => {
   }
 
   let products: Product[];
+  let optionCategories: ProductOptionCategory[];
   try {
-    products = await listProducts();
+    [products, optionCategories] = await Promise.all([listProducts(), listOptionCategories()]);
   } catch (error) {
     sendFirebaseError(res, error);
     return;
@@ -1143,7 +1191,7 @@ app.post('/api/orders', async (req, res) => {
         productId: product.id,
         slug: product.slug,
         name: product.name,
-        price: product.price,
+        price: product.price + optionsSurcharge(product, input.customization, optionCategories),
         quantity: input.quantity,
         customization:
           input.customization && typeof input.customization === 'object'

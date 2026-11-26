@@ -28,6 +28,8 @@ export interface ProductOptionValue {
   id: string;
   label: string;
   imageUrl?: string;
+  /** Amount added to the product price when chosen (only if the category has pricedValues). */
+  price?: number;
 }
 
 export type ProductOptionType = 'values' | 'text' | 'image';
@@ -36,6 +38,8 @@ export interface ProductOptionCategory {
   id: string;
   title: string;
   values: ProductOptionValue[];
+  /** When true, each value may carry an extra price. */
+  pricedValues?: boolean;
   productCategories?: ProductCategory[];
   type?: ProductOptionType;
 }
@@ -59,6 +63,9 @@ export interface CartCustomization {
     categoryTitle: string;
     type?: ProductOptionType;
     value: string;
+    valueId?: string;
+    /** Extra price of this value, for display; the server recomputes it. */
+    price?: number;
     imageUrl?: string;
   }>;
 }

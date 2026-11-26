@@ -1657,6 +1657,20 @@ html[data-theme='light'] .product-preview-details {
   border-radius: 0.35rem;
 }
 
+// Extra price typed next to a value title ("Prix supplémentaire").
+.option-value-price {
+  flex: 0 0 10.5rem;
+  width: 10.5rem;
+}
+
+.option-value-extra {
+  margin-left: auto;
+  color: var(--brand-teal);
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .option-image-control {
   display: flex;
   flex-wrap: wrap;
