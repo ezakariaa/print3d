@@ -8,6 +8,7 @@ import { Contact } from './pages/Contact';
 import { Customize } from './pages/Customize';
 import { Admin } from './pages/Admin';
 import { Home } from './pages/Home';
+import { MyOrders } from './pages/MyOrders';
 import { ProductDetail } from './pages/ProductDetail';
 import { Profile } from './pages/Profile';
 import { Services } from './pages/Services';
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="/admin/livraison" element={<Admin />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/wishlist" element={<Wishlist />} />
+            <Route path="/mes-commandes" element={<MyOrders />} />
           </Routes>
         </main>
         <Footer />

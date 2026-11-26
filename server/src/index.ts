@@ -197,6 +197,19 @@ async function requireSignedInUser(req: Request, res: Response): Promise<Decoded
   }
 }
 
+/** The signed-in account behind a request, or null for a guest (never answers the request). */
+async function optionalSignedInUser(req: Request): Promise<DecodedIdToken | null> {
+  const authorization = req.header('authorization');
+  const token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : '';
+  if (!token) return null;
+  try {
+    const decoded = await getAuth(getConfiguredApp()).verifyIdToken(token);
+    return decoded.firebase.sign_in_provider === 'anonymous' ? null : decoded;
+  } catch {
+    return null;
+  }
+}
+
 function isValidProfileInput(value: unknown): value is {
   firstName: string;
   lastName: string;
@@ -974,6 +987,26 @@ app.get('/api/wishlist', async (req, res) => {
   }
 });
 
+// Orders of the signed-in customer: those placed with the account, plus older ones
+// sent with the same e-mail address when that address is verified.
+app.get('/api/my-orders', async (req, res) => {
+  const user = await requireSignedInUser(req, res);
+  if (!user) return;
+  const email = user.email_verified && user.email ? user.email.trim().toLowerCase() : null;
+  try {
+    const mine = (await ordersCache.list()).filter((order) => {
+      if (order.uid === user.uid) return true;
+      const customer = order.customer as { email?: unknown } | undefined;
+      return !order.uid && email !== null && typeof customer?.email === 'string' &&
+        customer.email.trim().toLowerCase() === email;
+    });
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.json(newestFirst(mine).map(({ id: _id, uid: _uid, ...order }) => order));
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
 app.put('/api/wishlist', async (req, res) => {
   const user = await requireSignedInUser(req, res);
   if (!user) return;
@@ -1275,11 +1308,15 @@ app.post('/api/orders', async (req, res) => {
     shipping = { carrierId: carrier.id, carrierName: carrier.name, price: quote.price, delay: quote.delay };
   }
 
+  // Orders placed while signed in are linked to the account ("Mes commandes").
+  const account = await optionalSignedInUser(req);
+
   try {
     const orderId = `3A-${randomUUID().slice(0, 8).toUpperCase()}`;
     const total = subtotal + (shipping?.price ?? 0);
     const order = {
       orderId,
+      uid: account?.uid ?? null,
       items: orderItems,
       customer: {
         name: customer.name.trim().slice(0, 120),

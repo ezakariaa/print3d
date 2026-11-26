@@ -959,6 +959,60 @@ html[data-theme='light'] .product-preview-details {
   white-space: nowrap;
 }
 
+// "Mes commandes" (customer side).
+.my-orders {
+  display: grid;
+  gap: 1rem;
+}
+
+.my-order {
+  padding: 1.25rem 1.4rem;
+}
+
+.my-order-header,
+.my-order-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.my-order-items {
+  margin: 1rem 0;
+  padding: 1rem 0;
+  border-block: 1px solid var(--dashboard-panel-border);
+}
+
+.my-order-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2rem;
+  font-size: 0.9rem;
+}
+
+.my-order-total {
+  text-align: right;
+
+  .admin-order-total {
+    font-size: 1.25rem;
+  }
+}
+
+.my-order-status {
+  padding: 0.3rem 0.8rem;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+
+  &.is-pending { color: #c99a1e; }
+  &.is-processing { color: #4f8ff7; }
+  &.is-completed { color: #1f9d55; }
+  &.is-cancelled { color: #e5484d; }
+}
+
 .btn.admin-order-invoice {
   display: inline-flex;
   align-items: center;

@@ -686,6 +686,15 @@ export function Admin() {
                     : 'Retrouvez les produits que vous avez aimés.'}
                 </p>
               </Link>
+              <Link to="/mes-commandes" className="admin-dashboard-card">
+                <div className="admin-dashboard-card-heading">
+                  <span className="admin-dashboard-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none"><path d="M6 7h12l-1 13H7L6 7Z" /><path d="M9 7a3 3 0 0 1 6 0" /><path d="m9.5 13.5 1.8 1.8 3.4-3.6" /></svg>
+                  </span>
+                  <h2>Mes commandes</h2>
+                </div>
+                <p>Suivez vos commandes, leur statut et téléchargez vos factures.</p>
+              </Link>
               {isAdmin && ([
                 'users', 'orders', 'products', 'options', 'quotes', 'services', 'carriers',
               ] as const).map((key) => [key, ADMIN_SECTIONS[key].title, ADMIN_SECTIONS[key].description, key] as const)

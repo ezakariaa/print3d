@@ -94,7 +94,7 @@ export function sendQuote(payload: {
   });
 }
 
-export function placeOrder(payload: {
+export async function placeOrder(payload: {
   items: Array<{
     productId: string;
     quantity: number;
@@ -105,10 +105,18 @@ export function placeOrder(payload: {
   carrierId?: string;
   paymentMethod: PaymentMethod;
 }) {
+  // Signed in: send the account token so the order appears in "Mes commandes".
+  const token = await getCurrentUserToken().catch(() => null);
   return request<{ ok: boolean; orderId: string; message: string }>('/orders', {
     method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: JSON.stringify(payload),
   });
+}
+
+/** Orders of the signed-in customer, newest first. */
+export function fetchMyOrders() {
+  return authenticatedRequest<AdminOrder[]>('/my-orders');
 }
 
 export type PaymentMethod = 'cash_on_delivery' | 'bank_transfer';
