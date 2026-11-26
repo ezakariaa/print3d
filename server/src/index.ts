@@ -17,7 +17,7 @@ import {
 } from './data/products.js';
 import type { ProductOptionCategory } from './data/options.js';
 import { services as defaultServices, type Service } from './data/services.js';
-import { CatalogueCache, type SharedStore } from './catalogueCache.js';
+import { CatalogueCache, type SharedStore, type VersionSource } from './catalogueCache.js';
 
 // .env.local holds machine-only settings (e.g. the service key path); it is never deployed.
 for (const name of ['../.env.local', '../.env']) {
@@ -397,28 +397,60 @@ function isValidService(value: unknown): value is Service {
   );
 }
 
-// Catalogue caches: Firestore is read once per collection, then kept in memory and on disk.
-// Admin writes update the copies directly, so Firestore reads only happen on first start.
-const cacheDir = process.env.CATALOGUE_CACHE_DIR
-  ?? (process.env.FUNCTION_TARGET || process.env.VERCEL ? null : fileURLToPath(new URL('../.cache', import.meta.url)));
+// Catalogue caches: each collection is read from Firestore once, then kept in memory.
+// Several servers write to the same Firestore (Vercel API, local dev API): every write records
+// a new version of the collection in one small document, which each server checks at most once
+// a minute, and a collection is reloaded only when its version changed.
 const onVercel = Boolean(process.env.VERCEL);
-// On Vercel, instances share their copies through the Runtime Cache: a cold start reads it
-// instead of Firestore, and a write made on one instance reaches the others within 30 s.
+const runInBackground = (task: Promise<unknown>) => {
+  if (onVercel) waitUntil(task);
+};
+const VERSION_CHECK_MS = 60_000;
+const versionsDoc = () => getDb().collection('_meta').doc('cacheVersions');
+let knownVersions: { at: number; values: Record<string, string> } | null = null;
+let versionsRead: Promise<Record<string, string>> | null = null;
+
+const cacheVersions: VersionSource = {
+  current() {
+    if (knownVersions && Date.now() - knownVersions.at < VERSION_CHECK_MS) {
+      return Promise.resolve(knownVersions.values);
+    }
+    versionsRead ??= versionsDoc()
+      .get()
+      .then((snapshot) => {
+        const values = (snapshot.data() ?? {}) as Record<string, string>;
+        knownVersions = { at: Date.now(), values };
+        return values;
+      })
+      .finally(() => {
+        versionsRead = null;
+      });
+    return versionsRead;
+  },
+  bump(name) {
+    const version = `${Date.now()}-${randomUUID().slice(0, 8)}`;
+    if (knownVersions) knownVersions.values = { ...knownVersions.values, [name]: version };
+    const write = versionsDoc()
+      .set({ [name]: version }, { merge: true })
+      .catch((error: unknown) => console.warn(`[cache] ${name}: version non enregistrée.`, error));
+    runInBackground(write);
+    return version;
+  },
+};
+
+// On Vercel, instances also share their copies through the Runtime Cache, so a cold start
+// does not read Firestore when the collection has not changed.
 const sharedStore: SharedStore | null = onVercel
   ? {
       get: (key) => getCache().get(key),
       set: (key, value) => getCache().set(key, value, { ttl: 30 * 24 * 60 * 60 }),
       delete: (key) => getCache().delete(key),
-      background: (task) => waitUntil(task),
+      background: runInBackground,
     }
   : null;
-const cacheOptions = (name: string) => ({
-  filePath: cacheDir ? `${cacheDir}/${name}.json` : null,
-  shared: sharedStore,
-  memoryTtlMs: onVercel ? 30_000 : Infinity,
-});
+const cacheOptions = { versions: cacheVersions, shared: sharedStore };
 
-const productsCache = new CatalogueCache<Product>('products', cacheOptions('products'), async () => {
+const productsCache = new CatalogueCache<Product>('products', cacheOptions, async () => {
   const snapshot = await getDb().collection('products').get();
   const list: Product[] = [];
   snapshot.docs.forEach((doc) => {
@@ -547,7 +579,7 @@ function migrateCarrier(raw: Record<string, unknown>): Carrier | null {
   return isValidCarrier(candidate) ? toCarrier(candidate) : null;
 }
 
-const carriersCache = new CatalogueCache<Carrier>('carriers', cacheOptions('carriers'), async () => {
+const carriersCache = new CatalogueCache<Carrier>('carriers', cacheOptions, async () => {
   const snapshot = await getDb().collection('Carriers').get();
   const list: Carrier[] = [];
   snapshot.docs.forEach((doc) => {
@@ -567,7 +599,7 @@ async function listCarriers(): Promise<Carrier[]> {
 
 type StoredService = Service & { active?: boolean };
 
-const servicesCache = new CatalogueCache<StoredService>('services', cacheOptions('services'), async () => {
+const servicesCache = new CatalogueCache<StoredService>('services', cacheOptions, async () => {
   const snapshot = await getDb().collection('services').get();
   const stored: StoredService[] = [];
   snapshot.docs.forEach((doc) => {
@@ -582,7 +614,7 @@ const servicesCache = new CatalogueCache<StoredService>('services', cacheOptions
   return stored;
 });
 
-const optionsCache = new CatalogueCache<ProductOptionCategory>('options', cacheOptions('options'), async () => {
+const optionsCache = new CatalogueCache<ProductOptionCategory>('options', cacheOptions, async () => {
   const snapshot = await getDb().collection('Options').get();
   return snapshot.docs.map((doc) => doc.data()).filter(isValidOptionCategory);
 });
@@ -598,12 +630,12 @@ function newestFirst(records: StoredRecord[]): StoredRecord[] {
   return [...records].sort((left, right) => (right.createdAt ?? '').localeCompare(left.createdAt ?? ''));
 }
 
-const ordersCache = new CatalogueCache<StoredRecord>('orders', cacheOptions('orders'), async () => {
+const ordersCache = new CatalogueCache<StoredRecord>('orders', cacheOptions, async () => {
   const snapshot = await getDb().collection('orders').orderBy('createdAt', 'desc').limit(500).get();
   return snapshot.docs.map((doc) => toStoredRecord(doc.id, doc.data()));
 });
 
-const quotesCache = new CatalogueCache<StoredRecord>('quotes', cacheOptions('quotes'), async () => {
+const quotesCache = new CatalogueCache<StoredRecord>('quotes', cacheOptions, async () => {
   const snapshot = await getDb().collection('quotes').orderBy('createdAt', 'desc').limit(500).get();
   return snapshot.docs.map((doc) => toStoredRecord(doc.id, doc.data()));
 });
@@ -634,7 +666,7 @@ function toStoredProfile(id: string, data: Record<string, unknown>, email: strin
 }
 
 // Whole Users collection is read once; profile reads then never touch Firestore.
-const profilesCache = new CatalogueCache<StoredProfile>('profiles', cacheOptions('profiles'), async () => {
+const profilesCache = new CatalogueCache<StoredProfile>('profiles', cacheOptions, async () => {
   const snapshot = await getDb().collection('Users').get();
   return snapshot.docs.map((doc) => toStoredProfile(doc.id, doc.data(), ''));
 });
@@ -720,7 +752,7 @@ app.get('/api/profile', async (req, res) => {
             const data = docSnap.data();
             if (data) {
               stored = toStoredProfile(user.uid, data, user.email ?? '');
-              profilesCache.upsert(stored);
+              profilesCache.remember(stored);
               break;
             }
           }
@@ -1293,7 +1325,7 @@ app.get('/api/admin/users', async (_req, res) => {
               if (data) {
                 const loadedProfile = toStoredProfile(uid, data, '');
                 profileMap.set(uid, loadedProfile);
-                profilesCache.upsert(loadedProfile);
+                profilesCache.remember(loadedProfile);
               }
             }
           } catch {
@@ -1752,7 +1784,7 @@ if (
 ) {
   app.listen(PORT, () => {
     console.log(`3alam3D API → http://localhost:${PORT}`);
-    // Prime every cache (from disk when available, otherwise one Firestore read per collection).
+    // Prime every cache (one Firestore read per collection).
     // Each collection is primed independently so one failure (e.g. quota) does not block the others.
     [productsCache, servicesCache, optionsCache, ordersCache, quotesCache, profilesCache].forEach((cache) => {
       void cache.list().catch(() => undefined);

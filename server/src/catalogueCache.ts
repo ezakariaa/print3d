@@ -1,7 +1,21 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+/**
+ * Write-through catalogue cache, kept consistent between several servers.
+ *
+ * Several servers write to the same Firestore (the Vercel API and a local dev API), so each
+ * collection has a version, stored in one small Firestore document. Every write records a new
+ * version; readers compare versions (one shared read per minute at most, see VersionSource)
+ * and reload a collection only when it changed somewhere else.
+ */
 
-/** Key/value store shared by every server instance (Vercel Runtime Cache in production). */
+/** Versions of every collection, shared by all servers. */
+export interface VersionSource {
+  /** Current versions, by collection name (memoised: at most one read per interval). */
+  current(): Promise<Record<string, string>>;
+  /** Records that a collection changed; returns the new version (written in the background). */
+  bump(name: string): string;
+}
+
+/** Key/value store shared by every serverless instance (Vercel Runtime Cache in production). */
 export interface SharedStore {
   get(key: string): Promise<unknown>;
   set(key: string, value: unknown): Promise<void>;
@@ -11,63 +25,64 @@ export interface SharedStore {
 }
 
 export interface CatalogueCacheOptions {
-  /** Local file copy, so a restart of a long-running server costs no Firestore read. */
-  filePath?: string | null;
-  /** Copy shared between serverless instances; a cold start reads it instead of Firestore. */
+  versions: VersionSource;
+  /** Copy shared between serverless instances, so a cold start does not read Firestore. */
   shared?: SharedStore | null;
-  /**
-   * How long the in-memory copy is trusted before checking the shared copy again (ms).
-   * Lets an instance see writes made by another instance. Infinity for a single server.
-   */
-  memoryTtlMs?: number;
 }
 
-/**
- * Write-through catalogue cache.
- *
- * Firestore is read at most once per collection: the list is then held in memory,
- * on disk (single server) or in the shared store (serverless), and every admin write
- * updates those copies directly, so no re-read is needed.
- */
+interface SharedEntry<T> {
+  version: string;
+  items: T[];
+}
+
 // After a failed Firestore load (quota, network), wait before retrying so that
 // a burst of visitors does not turn into a burst of failing reads.
 const RETRY_DELAY_MS = 60_000;
+const NO_VERSION = '0';
 
 export class CatalogueCache<T extends { id: string }> {
   private items: Map<string, T> | null = null;
-  private loadedAt = 0;
+  /** Version of the collection that `items` reflects. */
+  private version: string | null = null;
   private pending: Promise<T[]> | null = null;
   private lastFailure: { at: number; error: unknown } | null = null;
   private forceReload = false;
-  private readonly filePath: string | null;
+  private readonly versions: VersionSource;
   private readonly shared: SharedStore | null;
-  private readonly memoryTtlMs: number;
 
   constructor(
     private readonly name: string,
     options: CatalogueCacheOptions,
     private readonly load: () => Promise<T[]>,
   ) {
-    this.filePath = options.filePath ?? null;
+    this.versions = options.versions;
     this.shared = options.shared ?? null;
-    this.memoryTtlMs = options.memoryTtlMs ?? Infinity;
   }
 
   private get sharedKey() {
     return `catalogue:${this.name}`;
   }
 
-  /** Returns the cached list, loading it from disk, the shared store or Firestore when needed. */
+  /** Returns the list, reloading it only when another server changed the collection. */
   async list(): Promise<T[]> {
-    if (this.items && Date.now() - this.loadedAt < this.memoryTtlMs) {
+    let remote: string | null = null;
+    try {
+      remote = (await this.versions.current())[this.name] ?? NO_VERSION;
+    } catch (error) {
+      // Without the version, a copy we already hold is the best answer.
+      if (this.items) return [...this.items.values()];
+      console.warn(`[cache] ${this.name}: version indisponible.`, error);
+    }
+    if (this.items && !this.forceReload && (remote === null || remote === this.version)) {
       return [...this.items.values()];
     }
+
     if (this.lastFailure && Date.now() - this.lastFailure.at < RETRY_DELAY_MS) {
       if (this.items) return [...this.items.values()];
       throw this.lastFailure.error;
     }
     if (!this.pending) {
-      this.pending = this.initialise()
+      this.pending = this.initialise(remote ?? NO_VERSION)
         .then((loaded) => {
           this.lastFailure = null;
           return loaded;
@@ -90,107 +105,80 @@ export class CatalogueCache<T extends { id: string }> {
     return this.items !== null;
   }
 
+  /**
+   * Records a change written to Firestore and tells the other servers. The copy here is
+   * updated at once, then reloaded on the next read: another server may have written too.
+   */
   upsert(item: T) {
-    if (!this.items) {
-      // No full copy here: never store a partial list, make the next read reload instead.
-      this.dropShared();
-      return;
-    }
+    this.versions.bump(this.name);
+    if (!this.items) return;
     this.items.set(item.id, item);
-    this.persist();
+    this.version = null;
   }
 
   remove(id: string) {
-    if (!this.items) {
-      this.dropShared();
-      return;
-    }
+    this.versions.bump(this.name);
+    if (!this.items) return;
     this.items.delete(id);
-    this.persist();
+    this.version = null;
+  }
+
+  /** Adds an item just read from Firestore (not a change): no new version. */
+  remember(item: T) {
+    if (!this.items) return;
+    this.items.set(item.id, item);
   }
 
   /** Forces the next list() to go back to Firestore (used by the explicit admin refresh). */
   reset() {
-    this.items = null;
     this.lastFailure = null;
     this.forceReload = true;
-    this.dropShared();
   }
 
-  private async initialise(): Promise<T[]> {
+  private async initialise(remote: string): Promise<T[]> {
     if (!this.forceReload) {
-      const fromDisk = this.readDisk();
-      if (fromDisk) return this.keep(fromDisk, 'le disque');
-
       const fromShared = await this.readShared();
-      if (fromShared) return this.keep(fromShared, 'le cache partagé', { quiet: true });
+      if (fromShared && fromShared.version === remote) {
+        return this.keep(fromShared.items, remote);
+      }
     }
     this.forceReload = false;
     const loaded = await this.load();
-    this.keep(loaded, 'Firestore');
-    this.persist();
+    console.log(`[cache] ${this.name}: ${loaded.length} élément(s) chargé(s) depuis Firestore.`);
+    this.keep(loaded, remote);
+    this.share();
     return loaded;
   }
 
-  private keep(list: T[], source: string, { quiet = false } = {}): T[] {
+  private keep(list: T[], version: string): T[] {
     this.items = new Map(list.map((item) => [item.id, item]));
-    this.loadedAt = Date.now();
-    if (!quiet) console.log(`[cache] ${this.name}: ${list.length} élément(s) chargé(s) depuis ${source}.`);
+    this.version = version;
     return list;
   }
 
-  private readDisk(): T[] | null {
-    if (!this.filePath || !existsSync(this.filePath)) return null;
-    try {
-      const parsed = JSON.parse(readFileSync(this.filePath, 'utf8')) as unknown;
-      return Array.isArray(parsed) ? (parsed as T[]) : null;
-    } catch (error) {
-      console.warn(`[cache] ${this.name}: fichier de cache illisible, rechargement.`, error);
-      return null;
-    }
-  }
-
-  private async readShared(): Promise<T[] | null> {
+  private async readShared(): Promise<SharedEntry<T> | null> {
     if (!this.shared) return null;
     try {
       const value = await Promise.resolve().then(() => this.shared!.get(this.sharedKey));
-      return Array.isArray(value) ? (value as T[]) : null;
+      const entry = value as Partial<SharedEntry<T>> | null;
+      return entry && typeof entry.version === 'string' && Array.isArray(entry.items)
+        ? (entry as SharedEntry<T>)
+        : null;
     } catch (error) {
       console.warn(`[cache] ${this.name}: cache partagé indisponible.`, error);
       return null;
     }
   }
 
-  private dropShared() {
-    if (!this.shared) return;
+  private share() {
+    if (!this.shared || !this.items || this.version === null) return;
+    const entry: SharedEntry<T> = { version: this.version, items: [...this.items.values()] };
     this.shared.background(
-      Promise.resolve().then(() => this.shared!.delete(this.sharedKey)).catch((error: unknown) => {
-        console.warn(`[cache] ${this.name}: invalidation du cache partagé impossible.`, error);
-      }),
-    );
-  }
-
-  private persist() {
-    if (!this.items) return;
-    this.loadedAt = Date.now();
-    const list = [...this.items.values()];
-
-    if (this.shared) {
-      this.shared.background(
-        Promise.resolve().then(() => this.shared!.set(this.sharedKey, list)).catch((error: unknown) => {
+      Promise.resolve()
+        .then(() => this.shared!.set(this.sharedKey, entry))
+        .catch((error: unknown) => {
           console.warn(`[cache] ${this.name}: écriture du cache partagé impossible.`, error);
         }),
-      );
-    }
-
-    if (!this.filePath) return;
-    try {
-      mkdirSync(dirname(this.filePath), { recursive: true });
-      const tmp = `${this.filePath}.tmp`;
-      writeFileSync(tmp, JSON.stringify(list));
-      renameSync(tmp, this.filePath);
-    } catch (error) {
-      console.warn(`[cache] ${this.name}: écriture du cache impossible.`, error);
-    }
+    );
   }
 }
