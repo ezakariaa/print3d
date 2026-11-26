@@ -901,6 +901,14 @@ export function Admin() {
                       <td>
                         <div className="admin-product-thumb" style={{ background: product.imageGradient }}>
                           {image && <img src={image} alt="" />}
+                          {(product.images?.length ?? 0) > 0 && (
+                            <span
+                              className="admin-product-thumb-count"
+                              title={`${product.images!.length} image(s)`}
+                            >
+                              {product.images!.length}
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td>

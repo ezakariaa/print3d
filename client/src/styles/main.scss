@@ -399,10 +399,22 @@ a {
 
   .product-visual {
     aspect-ratio: 4 / 3;
-    border-radius: 0.2rem;
+    border-radius: 0.85rem;
     position: relative;
     overflow: hidden;
     transition: filter 0.35s ease;
+
+    // Hover border, drawn above the photos.
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      border-radius: inherit;
+      border: 2px solid transparent;
+      pointer-events: none;
+      transition: border-color 0.3s ease;
+    }
 
     .product-image {
       display: block;
@@ -417,6 +429,13 @@ a {
       position: absolute;
       inset: 0;
       opacity: 0;
+    }
+  }
+
+  &:hover .product-visual,
+  &:focus-visible .product-visual {
+    &::after {
+      border-color: var(--brand-teal);
     }
   }
 
@@ -827,9 +846,9 @@ html[data-theme='light'] .product-preview-details {
 }
 
 .admin-product-thumb {
+  position: relative;
   width: 56px;
   height: 56px;
-  overflow: hidden;
   border-radius: 0.6rem;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 
@@ -838,7 +857,28 @@ html[data-theme='light'] .product-preview-details {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    border-radius: inherit;
   }
+}
+
+// Image count, styled like a notification badge on the thumb's top-right corner.
+.admin-product-thumb-count {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  background: #e5484d;
+  box-shadow: 0 0 0 2px var(--bs-body-bg, #fff);
 }
 
 .admin-product-category {
