@@ -1671,22 +1671,124 @@ html[data-theme='light'] .product-preview-details {
   white-space: nowrap;
 }
 
-.option-image-control {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.6rem;
+.admin-options-modal .option-value-editor {
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: var(--dashboard-row-bg);
+}
 
-  .form-control[type='file'] {
-    flex: 1 1 15rem;
+// Value line: image thumbnail · title · extra price · delete.
+.option-value-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+
+  > .form-control {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}
+
+.option-image-picker {
+  position: relative;
+  flex: 0 0 3.25rem;
+  width: 3.25rem;
+  height: 3.25rem;
+}
+
+.option-image-picker-tile {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  overflow: hidden;
+  margin: 0;
+  border: 1.5px dashed var(--dashboard-panel-border);
+  border-color: color-mix(in srgb, var(--dashboard-muted) 45%, transparent);
+  border-radius: 0.65rem;
+  background: var(--dashboard-icon-bg);
+  color: var(--brand-teal);
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    border-color: var(--brand-teal);
+    transform: translateY(-1px);
+  }
+
+  &:focus-within {
+    outline: 2px solid var(--brand-teal);
+    outline-offset: 2px;
   }
 
   img {
-    width: 4.5rem;
-    height: 3.5rem;
-    border-radius: 0.25rem;
+    width: 100%;
+    height: 100%;
     object-fit: cover;
   }
+}
+
+.option-image-picker.has-image .option-image-picker-tile {
+  border-style: solid;
+  border-color: var(--dashboard-panel-border);
+  background: transparent;
+}
+
+.option-image-picker-empty {
+  width: 1.45rem;
+  height: 1.45rem;
+}
+
+.option-image-picker-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(7, 16, 24, 0.55);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+
+  svg {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+}
+
+.option-image-picker-tile:hover .option-image-picker-overlay,
+.option-image-picker-tile:focus-within .option-image-picker-overlay {
+  opacity: 1;
+}
+
+.option-image-picker-remove {
+  position: absolute;
+  top: -0.4rem;
+  right: -0.4rem;
+  display: grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  place-items: center;
+  border: 2px solid var(--brand-ink);
+  border-radius: 50%;
+  background: #e5484d;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+
+  svg {
+    width: 0.6rem;
+    height: 0.6rem;
+  }
+
+  &:hover {
+    transform: scale(1.1);
+  }
+}
+
+html[data-theme='light'] .option-image-picker-remove {
+  border-color: #fff;
 }
 
 @media (max-width: 767.98px) {
@@ -1916,6 +2018,19 @@ html[data-theme='light'] .product-preview-details {
 .form-label {
   font-weight: 800;
   font-size: 0.9rem;
+}
+
+// Dark theme: Bootstrap keeps light colours for these by default.
+html:not([data-theme='light']) {
+  .input-group-text {
+    background: rgba(18, 184, 160, 0.1);
+    border-color: rgba(197, 212, 206, 0.18);
+    color: rgba(232, 242, 239, 0.75);
+  }
+
+  .form-text {
+    color: rgba(232, 242, 239, 0.58);
+  }
 }
 
 .site-footer {

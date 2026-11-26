@@ -29,6 +29,74 @@ const productCategoryOptions: Array<{ value: ProductCategory; label: string }> =
   { value: 'customizable', label: 'À personnaliser' },
 ];
 
+interface OptionImagePickerProps {
+  imageUrl?: string;
+  file?: File;
+  label: string;
+  onSelect: (event: ChangeEvent<HTMLInputElement>) => void;
+  onRemove: () => void;
+}
+
+/** Square thumbnail: click to choose an image, preview of the current or new one, small remove button. */
+function OptionImagePicker({ imageUrl, file, label, onSelect, onRemove }: OptionImagePickerProps) {
+  const [filePreview, setFilePreview] = useState<string>();
+
+  useEffect(() => {
+    if (!file) {
+      setFilePreview(undefined);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setFilePreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  const preview = filePreview ?? imageUrl;
+  return (
+    <div className={`option-image-picker${preview ? ' has-image' : ''}`}>
+      <label className="option-image-picker-tile" title={preview ? 'Changer l’image' : 'Ajouter une image'}>
+        <input
+          type="file"
+          className="visually-hidden"
+          accept="image/jpeg,image/png,image/webp"
+          aria-label={`${preview ? 'Changer l’image' : 'Ajouter une image'} pour ${label}`}
+          onChange={onSelect}
+        />
+        {preview ? (
+          <>
+            <img src={preview} alt="" />
+            <span className="option-image-picker-overlay" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+              </svg>
+            </span>
+          </>
+        ) : (
+          <svg className="option-image-picker-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2.5" />
+            <circle cx="9" cy="10" r="1.6" />
+            <path d="m21 16-4.5-4.5L8 20" />
+          </svg>
+        )}
+      </label>
+      {preview && (
+        <button
+          type="button"
+          className="option-image-picker-remove"
+          title="Retirer l’image"
+          aria-label={`Retirer l’image de ${label}`}
+          onClick={onRemove}
+        >
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+            <path d="M4 4l8 8M12 4l-8 8" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function AdminOptions() {
   const [categories, setCategories] = useState<ProductOptionCategory[]>([]);
   const [draft, setDraft] = useState<ProductOptionCategory>(emptyCategory);
@@ -117,6 +185,10 @@ export function AdminOptions() {
     }
     if (!draft.productCategories?.length) {
       setError('Choisissez au moins une catégorie de produits.');
+      return;
+    }
+    if (isImageType && draft.values.some((value) => !value.imageUrl && !imageFiles[value.id])) {
+      setError('Chaque valeur doit avoir une image.');
       return;
     }
 
@@ -406,7 +478,21 @@ export function AdminOptions() {
                 <div className="d-grid gap-3">
                   {draft.values.map((value, index) => (
                     <div className="option-value-editor" key={value.id}>
-                      <div className="d-flex align-items-center gap-2">
+                      <div className="option-value-row">
+                        <OptionImagePicker
+                          imageUrl={value.imageUrl}
+                          file={imageFiles[value.id]}
+                          label={value.label || `la valeur ${index + 1}`}
+                          onSelect={(event) => onSelectImage(value.id, event)}
+                          onRemove={() => {
+                            updateValue(value.id, { imageUrl: undefined });
+                            setImageFiles((current) => {
+                              const next = { ...current };
+                              delete next[value.id];
+                              return next;
+                            });
+                          }}
+                        />
                         <Form.Control
                           required
                           maxLength={120}
@@ -437,7 +523,9 @@ export function AdminOptions() {
                           <Button
                             type="button"
                             size="sm"
-                            variant="outline-danger"
+                            variant="link"
+                            className="admin-icon-btn admin-icon-btn-danger"
+                            title="Supprimer la valeur"
                             aria-label={`Supprimer la valeur ${index + 1}`}
                             onClick={() => {
                               setDraft((current) => ({
@@ -451,41 +539,12 @@ export function AdminOptions() {
                               });
                             }}
                           >
-                            ×
-                          </Button>
-                        )}
-                      </div>
-                      <div className="option-image-control">
-                        {value.imageUrl && (
-                          <img src={value.imageUrl} alt={`Image pour ${value.label || 'cette valeur'}`} />
-                        )}
-                        <input
-                          className="form-control"
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          required={isImageType && !value.imageUrl && !imageFiles[value.id]}
-                          aria-label={`${isImageType ? 'Image requise' : 'Image facultative'} pour ${value.label || `la valeur ${index + 1}`}`}
-                          onChange={(event) => onSelectImage(value.id, event)}
-                        />
-                        {imageFiles[value.id] && (
-                          <span className="small text-secondary">{imageFiles[value.id].name}</span>
-                        )}
-                        {value.imageUrl && (
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="link"
-                            className="p-0"
-                            onClick={() => {
-                              updateValue(value.id, { imageUrl: undefined });
-                              setImageFiles((current) => {
-                                const next = { ...current };
-                                delete next[value.id];
-                                return next;
-                              });
-                            }}
-                          >
-                            Retirer l’image
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M3 6h18" />
+                              <path d="M8 6V4h8v2" />
+                              <path d="M19 6l-1 14H6L5 6" />
+                              <path d="M10 11v6M14 11v6" />
+                            </svg>
                           </Button>
                         )}
                       </div>
@@ -495,7 +554,7 @@ export function AdminOptions() {
                 <Form.Text>
                   {isImageType
                     ? 'Chaque valeur doit avoir une image · JPEG, PNG ou WebP.'
-                    : 'Images facultatives · JPEG, PNG ou WebP · optimisées automatiquement.'}
+                    : 'Cliquez sur le carré pour ajouter une image (facultatif) · JPEG, PNG ou WebP · optimisée automatiquement.'}
                 </Form.Text>
               </>
             )}
