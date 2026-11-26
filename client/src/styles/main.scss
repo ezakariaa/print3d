@@ -1044,6 +1044,59 @@ html[data-theme='light'] .product-preview-details {
   white-space: nowrap;
 }
 
+// "Gestion des services" (admin).
+.admin-services-table {
+  tbody td:first-child {
+    min-width: 16rem;
+    max-width: 24rem;
+  }
+}
+
+.admin-service-summary {
+  margin-top: 0.15rem;
+  color: var(--dashboard-muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.admin-service-type {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  background: var(--dashboard-icon-bg);
+  color: var(--brand-teal);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &.is-resin { background: rgba(139, 92, 246, 0.14); color: #8b5cf6; }
+  &.is-model { background: rgba(79, 143, 247, 0.15); color: #4f8ff7; }
+  &.is-series { background: rgba(212, 175, 55, 0.16); color: #c99a1e; }
+  &.is-other { background: rgba(197, 212, 206, 0.15); color: var(--dashboard-muted); }
+}
+
+.admin-service-points {
+  margin: 0;
+  padding-left: 1rem;
+  color: var(--dashboard-muted);
+  font-size: 0.82rem;
+
+  li::marker {
+    color: var(--brand-teal);
+  }
+
+  .is-more {
+    list-style: none;
+    margin-left: -1rem;
+    font-style: italic;
+  }
+}
+
+.admin-service-price {
+  font-size: 1rem;
+  font-weight: 800;
+}
+
 // "Gestion des commandes" (admin): status tabs, search, one card per order.
 .ao-toolbar {
   display: flex;

@@ -3,9 +3,7 @@ import { Alert, Button, Col, Container, Form, Modal, Row, Table } from 'react-bo
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   deleteAdminOrder,
-  deleteAdminService,
   deleteAdminProduct,
-  fetchAdminServices,
   fetchAdminOptionCategories,
   fetchAdminOrders,
   fetchAdminProducts,
@@ -13,7 +11,6 @@ import {
   fetchAdminQuotes,
   fetchAdminUsers,
   fetchUserProfile,
-  saveAdminService,
   saveAdminProduct,
   fetchAdminUsers as _fetchAdminUsers,
   updateAdminProductStatus,
@@ -31,7 +28,7 @@ import {
   onAuthStateChanged,
   signOutAdmin,
 } from '../firebase';
-import type { Product, ProductOptionCategory, Service } from '../types';
+import type { Product, ProductOptionCategory } from '../types';
 import { compressImageToDataUrl } from '../utils/compressImage';
 import { formatPrice } from '../utils/formatPrice';
 import { invalidateCache, readCached, writeCached } from '../utils/localCache';
@@ -44,6 +41,7 @@ import { Paginator, clampPage } from '../components/Paginator';
 import { AdminCarriers } from './AdminCarriers';
 import { AdminOptions } from './AdminOptions';
 import { AdminOrdersTable } from './AdminOrdersTable';
+import { AdminServices } from './AdminServices';
 
 type AdminSection = 'users' | 'orders' | 'products' | 'options' | 'quotes' | 'services' | 'carriers';
 
@@ -85,16 +83,6 @@ function mergeTags(existing: string[], raw: string): string[] {
   return result;
 }
 
-const emptyService = (): Service => ({
-  id: '',
-  title: '',
-  summary: '',
-  details: [],
-  fromPrice: 0,
-  unit: 'pièce',
-  icon: 'fdm',
-});
-
 const emptyProfile: UserProfile = {
   firstName: '',
   lastName: '',
@@ -134,7 +122,6 @@ export function Admin() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [quotes, setQuotes] = useState<AdminQuote[]>([]);
-  const [services, setServices] = useState<Service[]>([]);
   const [optionCategories, setOptionCategories] = useState<ProductOptionCategory[]>([]);
   const [profile, setProfile] = useState<UserProfile>(emptyProfile);
   const [draft, setDraft] = useState<Product>(emptyProduct);
@@ -144,8 +131,6 @@ export function Admin() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [serviceDraft, setServiceDraft] = useState<Service>(emptyService);
-  const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('all');
   const [productMaterialFilter, setProductMaterialFilter] = useState('all');
@@ -244,18 +229,16 @@ export function Admin() {
 
       // 2. Admin data only for the administrator: regular users would get a 403.
       if (userProfile?.role !== 'Administrateur') return;
-      const [productList, orderList, quoteList, serviceList, userList, categoryList] = await Promise.all([
+      const [productList, orderList, quoteList, userList, categoryList] = await Promise.all([
         fetchAdminProducts(),
         fetchAdminOrders(),
         fetchAdminQuotes(),
-        fetchAdminServices(),
         fetchAdminUsers(),
         fetchAdminOptionCategories(),
       ]);
       setProducts(productList);
       setOrders(orderList);
       setQuotes(quoteList);
-      setServices(serviceList);
       setUsers(userList);
       setOptionCategories(categoryList);
     } catch (err) {
@@ -299,7 +282,6 @@ export function Admin() {
       setUsers([]);
       setOrders([]);
       setQuotes([]);
-      setServices([]);
       setProfile(emptyProfile);
       invalidateCache('profile:');
       navigate('/admin', { replace: true });
@@ -402,44 +384,6 @@ export function Admin() {
       images.splice(to, 0, moved);
       return { ...current, images };
     });
-  };
-
-  const onSaveService = async (event: FormEvent) => {
-    event.preventDefault();
-    setLoading(true);
-    setError('');
-    try {
-      const isNew = editingServiceId === null;
-      const service = {
-        ...serviceDraft,
-        id: serviceDraft.id.trim(),
-        title: serviceDraft.title.trim(),
-        summary: serviceDraft.summary.trim(),
-        unit: serviceDraft.unit.trim(),
-        icon: serviceDraft.icon.trim(),
-        details: serviceDraft.details.map((detail) => detail.trim()).filter(Boolean),
-      };
-      await saveAdminService(service, isNew);
-      setServiceDraft(emptyService());
-      setEditingServiceId(null);
-      setNotice('Service enregistré.');
-      await loadData();
-    } catch (err) {
-      showError(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const onDeleteService = async (service: Service) => {
-    if (!window.confirm(`Retirer « ${service.title} » des services publics ?`)) return;
-    try {
-      await deleteAdminService(service.id);
-      setServices((current) => current.filter((item) => item.id !== service.id));
-      setNotice('Service retiré.');
-    } catch (err) {
-      showError(err);
-    }
   };
 
   const onDuplicateProduct = async (product: Product) => {
@@ -1477,76 +1421,7 @@ export function Admin() {
       </Modal>
       {isOptionsPage && <AdminOptions />}
       {section === 'carriers' && <AdminCarriers />}
-      {section === 'services' && (
-        <Row className="gy-4">
-          <Col lg={5}>
-            <Form onSubmit={onSaveService} className="custom-panel">
-              <h2 className="h5">{editingServiceId ? 'Modifier le service' : 'Ajouter un service'}</h2>
-              <Form.Group className="mb-3">
-                <Form.Label>Identifiant</Form.Label>
-                <Form.Control
-                  required
-                  value={serviceDraft.id}
-                  disabled={Boolean(editingServiceId)}
-                  onChange={(event) => setServiceDraft({ ...serviceDraft, id: event.target.value.trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-') })}
-                />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Nom</Form.Label>
-                <Form.Control required value={serviceDraft.title} onChange={(event) => setServiceDraft({ ...serviceDraft, title: event.target.value })} />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Description courte</Form.Label>
-                <Form.Control required value={serviceDraft.summary} onChange={(event) => setServiceDraft({ ...serviceDraft, summary: event.target.value })} />
-              </Form.Group>
-              <Form.Group className="mb-3">
-                <Form.Label>Détails (une ligne par point)</Form.Label>
-                <Form.Control
-                  as="textarea"
-                  rows={4}
-                  value={serviceDraft.details.join('\n')}
-                  onChange={(event) => setServiceDraft({ ...serviceDraft, details: event.target.value.split('\n') })}
-                />
-              </Form.Group>
-              <Row className="g-3">
-                <Col xs={6}>
-                  <Form.Label>Prix à partir de (DH)</Form.Label>
-                  <Form.Control type="number" min="0" step="0.01" value={serviceDraft.fromPrice} onChange={(event) => setServiceDraft({ ...serviceDraft, fromPrice: Number(event.target.value) })} required />
-                </Col>
-                <Col xs={6}>
-                  <Form.Label>Unité</Form.Label>
-                  <Form.Control required value={serviceDraft.unit} onChange={(event) => setServiceDraft({ ...serviceDraft, unit: event.target.value })} />
-                </Col>
-                <Col xs={12}>
-                  <Form.Label>Icône</Form.Label>
-                  <Form.Control required value={serviceDraft.icon} onChange={(event) => setServiceDraft({ ...serviceDraft, icon: event.target.value })} />
-                </Col>
-              </Row>
-              <div className="d-flex gap-2 mt-3">
-                <Button type="submit" className="btn-brand" disabled={loading || !serviceDraft.id}>Enregistrer</Button>
-                {editingServiceId && <Button variant="outline-light" type="button" onClick={() => { setEditingServiceId(null); setServiceDraft(emptyService()); }}>Annuler</Button>}
-              </div>
-            </Form>
-          </Col>
-          <Col lg={7}>
-            <div className="custom-panel">
-              <h2 className="h5">Services publiés</h2>
-              {services.map((service) => (
-                <div key={service.id} className="admin-product-row d-flex justify-content-between align-items-center gap-3">
-                  <div>
-                    <strong>{service.title}</strong>
-                    <div className="small text-secondary">{formatPrice(service.fromPrice, 0)} / {service.unit}</div>
-                  </div>
-                  <div className="d-flex gap-2">
-                    <Button size="sm" variant="outline-light" onClick={() => { setServiceDraft(service); setEditingServiceId(service.id); }}>Modifier</Button>
-                    <Button size="sm" variant="outline-danger" onClick={() => void onDeleteService(service)}>Retirer</Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Col>
-        </Row>
-      )}
+      {section === 'services' && <AdminServices />}
     </Container>
   );
 }
