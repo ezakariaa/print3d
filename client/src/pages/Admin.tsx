@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Alert, Button, Col, Container, Form, Modal, Row, Table } from 'react-bootstrap';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -629,7 +629,7 @@ export function Admin() {
               <h2>{profileName || 'Votre profil'}</h2>
               <p className="mb-2">{profileEmail}</p>
               <div>
-                <span className="badge" style={profile.role === 'Administrateur' ? { background: '#d4af37', color: '#fff' } : { background: 'rgba(197, 212, 206, 0.15)', color: 'var(--brand-mist)' }}>
+                <span className="badge" style={profile.role === 'Administrateur' ? { background: '#d4af37', color: '#fff' } : { background: '#1f9d55', color: '#fff' }}>
                   {profile.role || 'Utilisateur'}
                 </span>
               </div>
@@ -723,7 +723,7 @@ export function Admin() {
                   </td>
                   <td>{u.email}</td>
                   <td>
-                    <span className="badge" style={u.role === 'Administrateur' ? { background: '#d4af37', color: '#fff' } : { background: 'rgba(197, 212, 206, 0.15)', color: 'var(--brand-mist)' }}>
+                    <span className="badge" style={u.role === 'Administrateur' ? { background: '#d4af37', color: '#fff' } : { background: '#1f9d55', color: '#fff' }}>
                       {u.role}
                     </span>
                   </td>
