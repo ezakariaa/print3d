@@ -1044,6 +1044,157 @@ html[data-theme='light'] .product-preview-details {
   white-space: nowrap;
 }
 
+// Home: "Trois façons de créer".
+.ways-header {
+  max-width: 40rem;
+  margin-bottom: 2rem;
+}
+
+.ways-kicker {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  color: var(--brand-teal);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.way-card {
+  --way-accent: #12b8a0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  padding: 1.75rem 1.6rem 1.5rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 1.1rem;
+  background: var(--brand-ink-soft);
+  color: inherit;
+  text-decoration: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+
+  &.is-shop { --way-accent: #4f8ff7; }
+  &.is-custom { --way-accent: #e5484d; }
+
+  // Coloured line on top of each card.
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--way-accent);
+  }
+
+  &:hover,
+  &:focus-visible {
+    transform: translateY(-6px);
+    border-color: var(--way-accent);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+    color: inherit;
+
+    .way-cta svg {
+      transform: translateX(4px);
+    }
+  }
+}
+
+html[data-theme='light'] .way-card {
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(23, 36, 45, 0.06);
+
+  &:hover,
+  &:focus-visible {
+    box-shadow: 0 18px 40px rgba(23, 36, 45, 0.12);
+  }
+}
+
+.way-number {
+  position: absolute;
+  top: 1rem;
+  right: 1.25rem;
+  color: var(--way-accent);
+  font-family: $headings-font-family;
+  font-size: 2.6rem;
+  line-height: 1;
+  opacity: 0.18;
+}
+
+.way-icon {
+  display: grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  margin-bottom: 1.1rem;
+  place-items: center;
+  border-radius: 0.9rem;
+  background: color-mix(in srgb, var(--way-accent) 14%, transparent);
+  color: var(--way-accent);
+
+  svg {
+    width: 1.6rem;
+    height: 1.6rem;
+  }
+}
+
+.way-title {
+  margin-bottom: 0.5rem;
+  font-size: 1.25rem;
+}
+
+.way-text {
+  margin-bottom: 1rem;
+  color: var(--dashboard-muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+.way-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0 0 1.4rem;
+  padding: 0;
+  list-style: none;
+
+  li {
+    padding: 0.2rem 0.65rem;
+    border: 1px solid var(--dashboard-panel-border);
+    border-radius: 999px;
+    color: var(--dashboard-muted);
+    font-size: 0.76rem;
+    font-weight: 600;
+  }
+}
+
+.way-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: auto;
+  color: var(--way-accent);
+  font-weight: 700;
+
+  svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    transition: transform 0.25s ease;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .way-card,
+  .way-cta svg {
+    transition: none;
+  }
+
+  .way-card:hover,
+  .way-card:focus-visible {
+    transform: none;
+  }
+}
+
 // "Gestion des services" (admin).
 .admin-services-table {
   tbody td:first-child {

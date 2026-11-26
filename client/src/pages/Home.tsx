@@ -9,6 +9,63 @@ import type { Product } from '../types';
 // Two rows of four cards on large screens.
 const FEATURED_COUNT = 8;
 
+const iconProps = {
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.8,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+};
+
+/** "Trois façons de créer": the three ways to order. */
+const CREATION_PATHS = [
+  {
+    to: '/services',
+    tone: 'service',
+    title: 'Services d’impression',
+    text: 'Envoyez votre fichier ou une simple idée : l’atelier imprime pour vous.',
+    points: ['FDM et résine', 'Modélisation 3D', 'Petites séries'],
+    cta: 'Demander un devis',
+    icon: (
+      <svg {...iconProps}>
+        <path d="M6 9V3h12v6" />
+        <rect x="3" y="9" width="18" height="9" rx="2" />
+        <path d="M7 18v3h10v-3M7 13h.01" />
+      </svg>
+    ),
+  },
+  {
+    to: '/boutique',
+    tone: 'shop',
+    title: 'Produits prêts',
+    text: 'Des designs déjà validés, imprimés avec soin et prêts à être expédiés.',
+    points: ['Qualité contrôlée', 'Expédition rapide', 'Partout au Maroc'],
+    cta: 'Parcourir la boutique',
+    icon: (
+      <svg {...iconProps}>
+        <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" />
+        <path d="m4 7.5 8 4.5 8-4.5M12 12v9" />
+      </svg>
+    ),
+  },
+  {
+    to: '/personnaliser',
+    tone: 'custom',
+    title: 'À personnaliser',
+    text: 'Choisissez un modèle et adaptez-le à votre image avant de commander.',
+    points: ['Texte et prénom', 'Couleurs au choix', 'Taille sur mesure'],
+    cta: 'Personnaliser un modèle',
+    icon: (
+      <svg {...iconProps}>
+        <path d="M12 20h9" />
+        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+        <path d="m15 5 3 3" />
+      </svg>
+    ),
+  },
+];
+
 // Seeded shuffle so the selection is stable for the whole page visit
 // (StrictMode re-runs effects in dev; a plain Math.random would reshuffle).
 function seededRandom(seed: number) {
@@ -79,32 +136,33 @@ export function Home() {
 
       <section className="section">
         <Container>
-          <h2 className="section-title">Trois façons de créer</h2>
-          <p className="section-lead">
-            Choisissez le parcours qui vous convient : service atelier, produit fini, ou personnalisation.
-          </p>
-          <Row className="gy-4">
-            <Col md={4}>
-              <h3 className="h5">Services d’impression</h3>
-              <p className="text-secondary small mb-3">
-                Envoyez votre fichier ou une idée. FDM, résine, modélisation et petites séries.
-              </p>
-              <Link to="/services">Demander un devis →</Link>
-            </Col>
-            <Col md={4}>
-              <h3 className="h5">Produits prêts</h3>
-              <p className="text-secondary small mb-3">
-                Des designs déjà validés, imprimés avec soin, prêts à expédier.
-              </p>
-              <Link to="/boutique">Parcourir la boutique →</Link>
-            </Col>
-            <Col md={4}>
-              <h3 className="h5">À personnaliser</h3>
-              <p className="text-secondary small mb-3">
-                Texte, couleur, taille : adaptez le modèle avant commande.
-              </p>
-              <Link to="/personnaliser">Personnaliser →</Link>
-            </Col>
+          <div className="ways-header">
+            <span className="ways-kicker">Comment ça marche</span>
+            <h2 className="section-title">Trois façons de créer</h2>
+            <p className="section-lead">
+              Choisissez le parcours qui vous convient : service atelier, produit fini, ou personnalisation.
+            </p>
+          </div>
+          <Row className="g-4">
+            {CREATION_PATHS.map((path, index) => (
+              <Col md={4} key={path.to}>
+                <Link to={path.to} className={`way-card is-${path.tone}`}>
+                  <span className="way-number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="way-icon" aria-hidden="true">{path.icon}</span>
+                  <h3 className="way-title">{path.title}</h3>
+                  <p className="way-text">{path.text}</p>
+                  <ul className="way-points">
+                    {path.points.map((point) => <li key={point}>{point}</li>)}
+                  </ul>
+                  <span className="way-cta">
+                    {path.cta}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M5 12h14M13 6l6 6-6 6" />
+                    </svg>
+                  </span>
+                </Link>
+              </Col>
+            ))}
           </Row>
         </Container>
       </section>
