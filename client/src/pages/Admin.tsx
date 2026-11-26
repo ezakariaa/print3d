@@ -12,6 +12,7 @@ import {
   fetchAdminQuotes,
   fetchAdminUsers,
   fetchUserProfile,
+  PAYMENT_METHOD_LABELS,
   saveAdminService,
   saveAdminProduct,
   fetchAdminUsers as _fetchAdminUsers,
@@ -822,7 +823,12 @@ export function Admin() {
                       );
                     })}
                   </td>
-                  <td>{formatPrice(order.total)}</td>
+                  <td>
+                    {formatPrice(order.total)}
+                    {order.paymentMethod && (
+                      <><br /><small className="text-secondary">{PAYMENT_METHOD_LABELS[order.paymentMethod]}</small></>
+                    )}
+                  </td>
                   <td>{dateLabel(order.createdAt)}</td>
                   <td>
                     <Form.Select value={order.status} onChange={(event) => void changeQuoteStatus(order.orderId, event.target.value)}>

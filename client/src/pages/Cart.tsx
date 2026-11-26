@@ -8,6 +8,7 @@ import {
   onCacheUpdate,
   placeOrder,
   type Carrier,
+  type PaymentMethod,
   type UserProfile,
 } from '../api/client';
 import { useCart } from '../context/CartContext';
@@ -15,6 +16,19 @@ import { getFirebaseAuth, isFirebaseConfigured, onAuthStateChanged } from '../fi
 import { readCached, writeCached } from '../utils/localCache';
 import { formatPrice } from '../utils/formatPrice';
 import { getProductImage } from '../utils/productImages';
+
+const PAYMENT_METHODS: Array<{ id: PaymentMethod; label: string; detail: string }> = [
+  {
+    id: 'cash_on_delivery',
+    label: 'Paiement à la livraison',
+    detail: 'Vous payez en espèces au livreur à la réception du colis.',
+  },
+  {
+    id: 'bank_transfer',
+    label: 'Virement bancaire',
+    detail: 'L’atelier vous envoie ses coordonnées bancaires ; la commande est préparée dès réception du virement.',
+  },
+];
 
 /** City name compared without accents, case or punctuation (same rule as the server). */
 function normalizeCity(city: string) {
@@ -41,6 +55,7 @@ export function Cart() {
   const [note, setNote] = useState('');
   const [carriers, setCarriers] = useState<Carrier[] | null>(null);
   const [carrierId, setCarrierId] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | ''>('');
   const [status, setStatus] = useState<{ type: 'ok' | 'err'; text: string } | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -130,6 +145,10 @@ export function Cart() {
       });
       return;
     }
+    if (!paymentMethod) {
+      setStatus({ type: 'err', text: 'Choisissez un mode de paiement.' });
+      return;
+    }
     setLoading(true);
     setStatus(null);
     try {
@@ -137,6 +156,7 @@ export function Cart() {
         items,
         customer: { name, email, phone, address, city, note },
         carrierId: selectedCarrier?.id,
+        paymentMethod,
       });
       setStatus({ type: 'ok', text: res.message });
       clear();
@@ -413,9 +433,26 @@ export function Cart() {
                   <span className="checkout-step-number" aria-hidden="true">3</span>
                   Paiement
                 </h2>
-                <p className="text-secondary small mb-3">
-                  Le paiement en ligne n’est pas encore activé. L’atelier vous recontactera pour la suite.
-                </p>
+                <div className="checkout-carriers mb-3" role="radiogroup" aria-label="Mode de paiement">
+                  {PAYMENT_METHODS.map((method) => {
+                    const selected = paymentMethod === method.id;
+                    return (
+                      <label key={method.id} className={`checkout-carrier${selected ? ' is-selected' : ''}`}>
+                        <Form.Check.Input
+                          type="radio"
+                          name="payment"
+                          value={method.id}
+                          checked={selected}
+                          onChange={() => setPaymentMethod(method.id)}
+                        />
+                        <span className="checkout-carrier-body">
+                          <span className="checkout-carrier-name">{method.label}</span>
+                          <span className="checkout-carrier-detail">{method.detail}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
                 <Form.Group className="mb-3" controlId="checkout-note">
                   <Form.Label>
                     Note ou commentaire <span className="fw-normal text-secondary">(facultatif)</span>

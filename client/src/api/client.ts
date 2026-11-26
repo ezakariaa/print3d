@@ -103,12 +103,20 @@ export function placeOrder(payload: {
   customer: { name: string; email: string; phone?: string; address?: string; city?: string; note?: string };
   /** Chosen carrier; delivery price is computed by the server. */
   carrierId?: string;
+  paymentMethod: PaymentMethod;
 }) {
   return request<{ ok: boolean; orderId: string; message: string }>('/orders', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
 }
+
+export type PaymentMethod = 'cash_on_delivery' | 'bank_transfer';
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  cash_on_delivery: 'Paiement à la livraison',
+  bank_transfer: 'Virement bancaire',
+};
 
 export interface AdminOrder {
   orderId: string;
@@ -121,6 +129,7 @@ export interface AdminOrder {
   customer: { name: string; email: string; phone?: string; address?: string; city?: string; note?: string };
   subtotal?: number;
   shipping?: { carrierId: string; carrierName: string; price: number; delay: string } | null;
+  paymentMethod?: PaymentMethod;
   total: number;
   status: string;
   createdAt: string | null;

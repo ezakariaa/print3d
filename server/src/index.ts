@@ -1163,7 +1163,7 @@ app.post('/api/contact', (req, res) => {
 });
 
 app.post('/api/orders', async (req, res) => {
-  const { items, customer, carrierId } = req.body ?? {};
+  const { items, customer, carrierId, paymentMethod } = req.body ?? {};
   if (!Array.isArray(items) || items.length === 0) {
     res.status(400).json({ error: 'Le panier est vide.' });
     return;
@@ -1173,6 +1173,10 @@ app.post('/api/orders', async (req, res) => {
     return;
   }
   const city = typeof customer.city === 'string' ? customer.city.trim().slice(0, 120) : '';
+  if (paymentMethod !== 'cash_on_delivery' && paymentMethod !== 'bank_transfer') {
+    res.status(400).json({ error: 'Choisissez un mode de paiement.' });
+    return;
+  }
 
   let products: Product[];
   let optionCategories: ProductOptionCategory[];
@@ -1287,6 +1291,7 @@ app.post('/api/orders', async (req, res) => {
       },
       subtotal,
       shipping,
+      paymentMethod,
       total,
       status: 'pending',
     };
@@ -1295,7 +1300,9 @@ app.post('/api/orders', async (req, res) => {
     res.status(201).json({
       ok: true,
       orderId,
-      message: `Commande ${orderId} enregistrée. L’atelier vous recontactera à ${customer.email}.`,
+      message: paymentMethod === 'bank_transfer'
+        ? `Commande ${orderId} enregistrée. L’atelier vous envoie ses coordonnées bancaires à ${customer.email} ; la commande sera préparée dès réception du virement.`
+        : `Commande ${orderId} enregistrée. Vous paierez à la livraison ; l’atelier vous recontactera à ${customer.email}.`,
     });
   } catch (error) {
     sendFirebaseError(res, error);
