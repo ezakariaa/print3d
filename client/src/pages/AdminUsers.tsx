@@ -2,7 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { Alert, Button, Col, Form, Modal, Row, Table } from 'react-bootstrap';
 import type { AdminOrder, AdminUser, AdminUserDetails } from '../api/client';
 import { formatPrice } from '../utils/formatPrice';
-import { isValidatedSale } from '../utils/sales';
+import { isOutOfRevenue, isValidatedSale } from '../utils/sales';
 
 type RoleFilter = 'all' | 'Utilisateur' | 'Administrateur';
 type StatusFilter = 'all' | 'active' | 'disabled';
@@ -265,8 +265,10 @@ function UserPreviewModal({ user, orders, onHide, onEdit }: {
   onHide: () => void;
   onEdit: () => void;
 }) {
-  const validated = orders.filter(isValidatedSale);
-  const spent = validated.reduce((sum, order) => sum + order.total, 0);
+  // Seen from the customer's side: what they bought, not what the workshop cashed in.
+  const delivered = orders.filter(isValidatedSale);
+  const purchases = orders.filter((order) => !isOutOfRevenue(order));
+  const spent = purchases.reduce((sum, order) => sum + order.total, 0);
   const recent = [...orders].sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? '')).slice(0, 5);
   const details: Array<[string, string]> = [
     ['E-mail', user.email],
@@ -296,9 +298,9 @@ function UserPreviewModal({ user, orders, onHide, onEdit }: {
         </div>
 
         <div className="user-preview-stats">
-          <div><span className="user-preview-stat">{orders.length}</span><span>Commande{orders.length > 1 ? 's' : ''}</span></div>
-          <div><span className="user-preview-stat">{validated.length}</span><span>Vente{validated.length > 1 ? 's' : ''} validée{validated.length > 1 ? 's' : ''}</span></div>
-          <div><span className="user-preview-stat">{formatPrice(spent)}</span><span>Total encaissé</span></div>
+          <div><span className="user-preview-stat">{orders.length}</span><span>Commande{orders.length > 1 ? 's' : ''} passée{orders.length > 1 ? 's' : ''}</span></div>
+          <div><span className="user-preview-stat">{delivered.length}</span><span>Commande{delivered.length > 1 ? 's' : ''} reçue{delivered.length > 1 ? 's' : ''}</span></div>
+          <div><span className="user-preview-stat">{formatPrice(spent)}</span><span>Total des achats</span></div>
         </div>
 
         <dl className="user-preview-details">
