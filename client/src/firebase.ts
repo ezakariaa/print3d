@@ -5,6 +5,7 @@ import {
   createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
+  onIdTokenChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
   setPersistence,
@@ -38,7 +39,7 @@ export function getFirebaseAuth() {
   return getAuth(getFirebaseApp());
 }
 
-export { onAuthStateChanged };
+export { onAuthStateChanged, onIdTokenChanged };
 
 /**
  * Signs in with e-mail and password. With `remember`, the session survives closing the

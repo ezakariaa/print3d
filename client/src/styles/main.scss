@@ -1377,6 +1377,33 @@ html[data-theme='light'] .prod-card {
   }
 }
 
+// Green check next to a confirmed e-mail address.
+.email-with-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  max-width: 100%;
+
+  > a,
+  > span:not(.email-verified-mark) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.email-verified-mark {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: #1f9d55;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+  }
+}
+
 // Espace Client: "Vérifiez votre adresse e-mail".
 .verify-banner {
   display: flex;

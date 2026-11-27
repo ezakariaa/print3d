@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { Alert, Button, Col, Form, Modal, Row, Table } from 'react-bootstrap';
 import type { AdminOrder, AdminUser, AdminUserDetails } from '../api/client';
 import { formatPrice } from '../utils/formatPrice';
+import { VerifiedEmailMark } from '../components/VerifiedEmailMark';
 import { isOutOfRevenue, isValidatedSale } from '../utils/sales';
 
 type RoleFilter = 'all' | 'Utilisateur' | 'Administrateur';
@@ -164,7 +165,7 @@ export function AdminUsers({ users, orders, onToggle, onSave, onDelete }: Props)
                     <span className={`user-avatar${user.role === 'Administrateur' ? ' is-admin' : ''}`} aria-hidden="true">{initials(user)}</span>
                     <span className="user-names">
                       <span className="fw-semibold">{displayName(user)}</span>
-                      <a href={`mailto:${user.email}`} className="admin-order-link">{user.email}</a>
+                      <span className="email-with-mark"><a href={`mailto:${user.email}`} className="admin-order-link">{user.email}</a><VerifiedEmailMark verified={user.emailVerified} /></span>
                     </span>
                   </div>
                 </td>
@@ -305,7 +306,12 @@ function UserPreviewModal({ user, orders, onHide, onEdit }: {
 
         <dl className="user-preview-details">
           {details.map(([label, value]) => (
-            <div key={label}><dt>{label}</dt><dd>{value}</dd></div>
+            <div key={label}>
+              <dt>{label}</dt>
+              <dd className={label === 'E-mail' ? 'email-with-mark' : undefined}>
+                {value}{label === 'E-mail' && <VerifiedEmailMark verified={user.emailVerified} />}
+              </dd>
+            </div>
           ))}
         </dl>
 

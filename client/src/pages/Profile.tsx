@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Alert, Button, Col, Container, Form, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { fetchUserProfile, saveUserProfile, type UserProfile } from '../api/client';
+import { OwnVerifiedEmailMark } from '../components/VerifiedEmailMark';
 import {
   getFirebaseAuth,
   isFirebaseConfigured,
@@ -212,7 +213,7 @@ export function ProfileEditor({ initial, onSave: save }: {
                 </Col>
                 <Col md={6}>
                   <Form.Group controlId="profile-email">
-                    <Form.Label>E-mail</Form.Label>
+                    <Form.Label className="email-with-mark">E-mail<OwnVerifiedEmailMark /></Form.Label>
                     <div className="profile-locked">
                       <Form.Control type="email" value={profile.email} readOnly />
                       <svg {...iconProps}><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>

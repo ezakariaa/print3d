@@ -6,6 +6,7 @@ import { isValidatedSale, saleDay } from '../utils/sales';
 import { COMPANY } from '../config/company';
 import type { Product } from '../types';
 import { formatPrice } from '../utils/formatPrice';
+import { OwnVerifiedEmailMark } from './VerifiedEmailMark';
 
 export type DashboardSectionKey = 'users' | 'orders' | 'products' | 'options' | 'quotes' | 'services' | 'carriers' | 'sales' | 'expenses';
 
@@ -148,7 +149,7 @@ export function ClientDashboard({
           </div>
         </div>
         <dl className="dash-profile-list">
-          <div><dt>E-mail</dt><dd>{profileEmail}</dd></div>
+          <div><dt>E-mail</dt><dd className="email-with-mark">{profileEmail}<OwnVerifiedEmailMark /></dd></div>
           <div><dt>Téléphone</dt><dd>{profile.phone || 'Non renseigné'}</dd></div>
           <div>
             <dt>Adresse</dt>
