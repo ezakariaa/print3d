@@ -5,6 +5,7 @@ import {
   createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
+  sendEmailVerification,
   sendPasswordResetEmail,
   setPersistence,
   signInAnonymously,
@@ -55,6 +56,30 @@ export async function sendPasswordReset(email: string) {
   const auth = getFirebaseAuth();
   auth.languageCode = 'fr';
   await sendPasswordResetEmail(auth, email);
+}
+
+/** Where the link in the verification e-mail brings the customer back. */
+const verificationSettings = () => ({ url: `${window.location.origin}/admin?verified=1` });
+
+/** Sends (again) the e-mail whose link confirms the address of the signed-in account. */
+export async function resendEmailVerification() {
+  const auth = getFirebaseAuth();
+  const user = auth.currentUser;
+  if (!user || user.isAnonymous) throw new Error('Connectez-vous pour vérifier votre adresse e-mail.');
+  auth.languageCode = 'fr';
+  await sendEmailVerification(user, verificationSettings());
+}
+
+/**
+ * Reads the account again from Firebase (the link was opened in another tab or on another
+ * device) and renews the session token so the API sees the new state.
+ */
+export async function refreshEmailVerified(): Promise<boolean> {
+  const user = getFirebaseAuth().currentUser;
+  if (!user || user.isAnonymous) return false;
+  await user.reload();
+  if (user.emailVerified) await user.getIdToken(true);
+  return user.emailVerified;
 }
 
 export async function signOutAdmin() {
@@ -166,6 +191,14 @@ export async function registerUser(payload: RegisterPayload): Promise<User> {
     });
   } catch (err) {
     console.warn('Backend /api/register call warning:', err);
+  }
+
+  // Confirmation e-mail: the owner of the address clicks its link to verify it.
+  try {
+    auth.languageCode = 'fr';
+    await sendEmailVerification(credentials.user, verificationSettings());
+  } catch (err) {
+    console.warn('sendEmailVerification warning:', err);
   }
 
   // Sign back out so the registration doesn't auto-login as admin

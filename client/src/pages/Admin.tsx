@@ -50,6 +50,7 @@ import { AdminOptions } from './AdminOptions';
 import { AdminOrdersTable } from './AdminOrdersTable';
 import { AdminServices } from './AdminServices';
 import { AdminUsers } from './AdminUsers';
+import { EmailVerificationBanner } from '../components/EmailVerificationBanner';
 import { AdminSales } from './AdminSales';
 import { AdminExpenses } from './AdminExpenses';
 import { ClientDashboard } from '../components/ClientDashboard';
@@ -687,6 +688,7 @@ export function Admin() {
         <Alert variant="warning" dismissible onClose={() => setError('')}>{error}</Alert>
       )}
       {notice && <Alert className="alert-soft" dismissible onClose={() => setNotice('')}>{notice}</Alert>}
+      {!isManagementPage && <EmailVerificationBanner />}
       {!isManagementPage && (
         <ClientDashboard
           isAdmin={isAdmin}

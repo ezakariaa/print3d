@@ -187,7 +187,7 @@ export function AuthModal({ show, onHide, onSignedIn }: AuthModalProps) {
       setEmail(reg.email.trim());
       setReg({ firstName: '', lastName: '', email: '', phone: '', address: '', city: '', password: '', confirm: '' });
       setMode('login');
-      setNotice('Votre compte a été créé. Vous pouvez maintenant vous connecter.');
+      setNotice(`Votre compte a été créé. Un e-mail de confirmation vient d’être envoyé à ${reg.email.trim()} : cliquez sur son lien pour vérifier votre adresse. Vous pouvez déjà vous connecter.`);
     } catch (err) {
       setError(authMessage(err, 'Inscription impossible.'));
     } finally {

@@ -1377,6 +1377,70 @@ html[data-theme='light'] .prod-card {
   }
 }
 
+// Espace Client: "Vérifiez votre adresse e-mail".
+.verify-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.9rem 1.1rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  border-radius: 1rem;
+  background: rgba(217, 119, 6, 0.08);
+
+  &.is-done {
+    border-color: rgba(31, 157, 85, 0.35);
+    background: rgba(31, 157, 85, 0.08);
+
+    .verify-banner-icon {
+      background: rgba(31, 157, 85, 0.16);
+      color: #1f9d55;
+      font-weight: 800;
+    }
+  }
+}
+
+.verify-banner-icon {
+  display: grid;
+  flex: 0 0 2.6rem;
+  width: 2.6rem;
+  height: 2.6rem;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(217, 119, 6, 0.16);
+  color: #d97706;
+
+  svg {
+    width: 1.3rem;
+    height: 1.3rem;
+  }
+}
+
+.verify-banner-text {
+  display: grid;
+  flex: 1 1 18rem;
+  gap: 0.15rem;
+  min-width: 0;
+  font-size: 0.92rem;
+
+  b {
+    overflow-wrap: anywhere;
+  }
+}
+
+.verify-banner-message {
+  margin-top: 0.25rem;
+  color: var(--dashboard-muted);
+  font-size: 0.85rem;
+}
+
+.verify-banner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 // A disabled account is dimmed, except its access switch and its actions.
 .users-table tr.is-disabled td:not(:nth-last-child(-n + 2)) {
   opacity: 0.55;
