@@ -1290,6 +1290,41 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
+/**
+ * JPEG copy of a stored image, for browsers that refuse WebP (Safari in Lockdown Mode, old iOS).
+ * Only our own blob store is accepted; the CDN keeps each copy for a year (blob URLs never change).
+ */
+const BLOB_IMAGE_URL = /^https:\/\/[a-z0-9]+\.public\.blob\.vercel-storage\.com\/[A-Za-z0-9/_.-]+\.(webp|png|jpe?g)$/;
+app.get('/api/image.jpg', async (req, res) => {
+  const src = typeof req.query.src === 'string' ? req.query.src : '';
+  if (!BLOB_IMAGE_URL.test(src)) {
+    res.status(400).json({ error: 'Image invalide.' });
+    return;
+  }
+  try {
+    const upstream = await fetch(src);
+    if (!upstream.ok) {
+      res.status(upstream.status === 404 ? 404 : 502).end();
+      return;
+    }
+    const { default: sharp } = await import('sharp');
+    const width = Math.min(Math.max(Number(req.query.w) || 1200, 64), 2000);
+    const jpeg = await sharp(Buffer.from(await upstream.arrayBuffer()))
+      .rotate()
+      .resize({ width, withoutEnlargement: true })
+      .flatten({ background: '#ffffff' })
+      .jpeg({ quality: 82, mozjpeg: true })
+      .toBuffer();
+    res.set('Content-Type', 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=31536000, immutable');
+    res.set('Vercel-CDN-Cache-Control', 'max-age=31536000, immutable');
+    res.send(jpeg);
+  } catch (error) {
+    console.error('Conversion JPEG impossible.', error);
+    res.status(502).end();
+  }
+});
+
 app.get('/api/products', async (req, res) => {
   try {
     const { category, q } = req.query;
