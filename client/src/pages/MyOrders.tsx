@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Container } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { fetchMyOrders, fetchProducts, PAYMENT_METHOD_LABELS, type AdminOrder } from '../api/client';
+import { fetchMyOrders, fetchProducts, PAYMENT_METHOD_LABELS, type AdminOrder, type DeliveryState } from '../api/client';
 import { InvoicePreviewModal } from '../components/InvoicePreviewModal';
 import { getFirebaseAuth, isFirebaseConfigured, onAuthStateChanged } from '../firebase';
 import type { Product } from '../types';
 import { formatPrice } from '../utils/formatPrice';
 import { getProductImage } from '../utils/productImages';
+import { deliveryStateOf } from '../utils/sales';
 
 const STATUS: Record<string, { label: string; className: string }> = {
   pending: { label: 'Reçue', className: 'is-pending' },
@@ -20,6 +21,7 @@ const STEPS = [
   { status: 'pending', label: 'Reçue' },
   { status: 'processing', label: 'En préparation' },
   { status: 'completed', label: 'Terminée' },
+  { status: 'in_transit', label: 'En livraison' },
   { status: 'delivered', label: 'Livrée' },
 ];
 
@@ -39,12 +41,17 @@ function itemDetails(item: AdminOrder['items'][number]) {
   ].filter(Boolean) as string[];
 }
 
-function OrderProgress({ status, delivered }: { status: string; delivered?: boolean }) {
+function OrderProgress({ status, delivery }: { status: string; delivery: DeliveryState | null }) {
   if (status === 'cancelled') {
     return <div className="mo-cancelled">Cette commande a été annulée.</div>;
   }
-  // "Livrée" (last step) once the workshop has ticked the delivery.
-  const current = delivered ? STEPS.length - 1 : Math.max(0, STEPS.findIndex((step) => step.status === status));
+  if (delivery === 'returned') {
+    return <div className="mo-cancelled">Cette commande nous a été retournée. Contactez-nous pour organiser une nouvelle livraison.</div>;
+  }
+  // The delivery steps come from the state set by the workshop.
+  const current = delivery
+    ? STEPS.findIndex((step) => step.status === delivery)
+    : Math.max(0, STEPS.findIndex((step) => step.status === status));
   return (
     <ol className="mo-progress" aria-label="Avancement de la commande">
       {STEPS.map((step, index) => (
@@ -142,7 +149,7 @@ export function MyOrderCard({
           )}
         </div>
         {/* Progress under the delivery and payment details. */}
-        <OrderProgress status={order.status} delivered={order.delivered} />
+        <OrderProgress status={order.status} delivery={deliveryStateOf(order)} />
         </div>
 
         <div className="mo-summary">

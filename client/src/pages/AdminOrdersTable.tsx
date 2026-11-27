@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Button, Form } from 'react-bootstrap';
-import { PAYMENT_METHOD_LABELS, type AdminOrder } from '../api/client';
+import { PAYMENT_METHOD_LABELS, type AdminOrder, type DeliveryState } from '../api/client';
 import { InvoicePreviewModal } from '../components/InvoicePreviewModal';
 import { OrderEditModal } from '../components/OrderEditModal';
 import type { Product } from '../types';
 import { formatPrice } from '../utils/formatPrice';
 import { getProductImage } from '../utils/productImages';
-import { isValidatedSale } from '../utils/sales';
+import { DELIVERY_STATES, deliveryStateOf, isOutOfRevenue, isValidatedSale } from '../utils/sales';
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'Toutes' },
@@ -51,15 +51,15 @@ interface Props {
   /** Catalogue: product photos, and adding a product while correcting an order. */
   products: Product[];
   onStatusChange: (orderId: string, status: string) => void;
-  /** Ticks or unticks "Livrée": a completed and delivered order is a validated sale. */
-  onDeliveredChange: (orderId: string, delivered: boolean) => void;
+  /** Sets the delivery state (null = none): a completed and delivered order is a validated sale. */
+  onDeliveryChange: (orderId: string, state: DeliveryState | null) => void;
   onOrderSaved: (order: AdminOrder) => void;
   /** Asks for confirmation, then deletes the order. */
   onDelete: (order: AdminOrder) => void;
 }
 
 /** Orders of "Gestion des commandes", one card per order. */
-export function AdminOrdersTable({ orders, products, onStatusChange, onDeliveredChange, onOrderSaved, onDelete }: Props) {
+export function AdminOrdersTable({ orders, products, onStatusChange, onDeliveryChange, onOrderSaved, onDelete }: Props) {
   const [invoiceOrder, setInvoiceOrder] = useState<AdminOrder | null>(null);
   const [editOrder, setEditOrder] = useState<AdminOrder | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -243,30 +243,37 @@ export function AdminOrdersTable({ orders, products, onStatusChange, onDelivered
                 <section className="ao-col ao-col-summary">
                   <h3 className="ao-col-title">Livraison et total</h3>
                   <div className="ao-shipping">
-                    <div className="ao-shipping-line">
-                      <span className="fw-semibold">{order.shipping?.carrierName ?? 'Transporteur à définir'}</span>
-                      <Form.Check
-                        type="checkbox"
-                        id={`delivered-${order.orderId}`}
-                        className={`ao-delivered${order.delivered ? ' is-checked' : ''}`}
-                        label="Livrée"
-                        checked={Boolean(order.delivered)}
-                        disabled={order.status === 'cancelled'}
-                        onChange={(event) => onDeliveredChange(order.orderId, event.target.checked)}
-                      />
-                    </div>
+                    <span className="fw-semibold">{order.shipping?.carrierName ?? 'Transporteur à définir'}</span>
                     <div className="admin-order-muted">
                       {[order.customer.city, order.shipping?.delay].filter(Boolean).join(' · ')}
                     </div>
-                    {order.delivered && order.deliveredAt && (
+                    {/* One delivery state at a time; ticking the checked one again clears it. */}
+                    <div className="ao-delivery" role="group" aria-label={`Livraison de la commande ${order.orderId}`}>
+                      {DELIVERY_STATES.map((state) => {
+                        const checked = deliveryStateOf(order) === state.value;
+                        return (
+                          <Form.Check
+                            key={state.value}
+                            type="checkbox"
+                            id={`delivery-${state.value}-${order.orderId}`}
+                            className={`ao-delivery-option is-${state.value}${checked ? ' is-checked' : ''}`}
+                            label={state.label}
+                            checked={checked}
+                            disabled={order.status === 'cancelled'}
+                            onChange={() => onDeliveryChange(order.orderId, checked ? null : state.value)}
+                          />
+                        );
+                      })}
+                    </div>
+                    {deliveryStateOf(order) === 'delivered' && order.deliveredAt && (
                       <div className="admin-order-muted">
                         Livrée le {new Date(order.deliveredAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                       </div>
                     )}
-                    <span className={`ao-sale-state ${isValidatedSale(order) ? 'is-validated' : order.status === 'cancelled' ? 'is-cancelled' : 'is-progress'}`}>
+                    <span className={`ao-sale-state ${isValidatedSale(order) ? 'is-validated' : isOutOfRevenue(order) ? 'is-cancelled' : 'is-progress'}`}>
                       {isValidatedSale(order)
                         ? '✓ Vente validée'
-                        : order.status === 'cancelled'
+                        : isOutOfRevenue(order)
                           ? 'Hors chiffre d’affaires'
                           : 'Vente en cours'}
                     </span>

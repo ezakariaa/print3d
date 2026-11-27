@@ -4696,6 +4696,52 @@ html[data-theme='light'] .ao-card {
   }
 }
 
+// Delivery follow-up: three exclusive boxes, stacked.
+.ao-delivery {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.55rem 0 0.15rem;
+}
+
+.form-check.ao-delivery-option {
+  --delivery-accent: #4f8ff7;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 0;
+  margin: 0;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+
+  &.is-delivered { --delivery-accent: #1f9d55; }
+  &.is-returned { --delivery-accent: #e5484d; }
+
+  .form-check-input {
+    float: none;
+    flex: 0 0 auto;
+    margin: 0;
+
+    &:checked {
+      border-color: var(--delivery-accent);
+      background-color: var(--delivery-accent);
+    }
+  }
+
+  .form-check-label {
+    cursor: pointer;
+  }
+
+  &.is-checked {
+    border-color: color-mix(in srgb, var(--delivery-accent) 55%, transparent);
+    background: color-mix(in srgb, var(--delivery-accent) 10%, transparent);
+    color: var(--delivery-accent);
+  }
+}
+
 // Is the order in the revenue? (validated = completed AND delivered)
 .ao-sale-state {
   display: inline-block;
@@ -4830,7 +4876,7 @@ html[data-theme='light'] .mo-card {
 // Progress: Reçue → En préparation → Terminée.
 .mo-progress {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   margin: 0;
   padding: 1.25rem 1.5rem 0.5rem;
   list-style: none;

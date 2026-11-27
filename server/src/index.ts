@@ -2074,8 +2074,19 @@ const ORDER_NOTICES: Record<string, { title: string; message: (id: string) => st
   processing: { title: 'Commande en préparation', message: (id) => `Votre commande ${id} est en cours de préparation dans notre atelier.` },
   completed: { title: 'Commande terminée', message: (id) => `Votre commande ${id} est terminée et prête à être expédiée.` },
   cancelled: { title: 'Commande annulée', message: (id) => `Votre commande ${id} a été annulée. Contactez-nous pour toute question.` },
+  in_transit: { title: 'Commande en cours de livraison', message: (id) => `Votre commande ${id} a été confiée au transporteur et arrive bientôt.` },
   delivered: { title: 'Commande livrée', message: (id) => `Votre commande ${id} a été livrée. Merci pour votre confiance !` },
+  returned: { title: 'Commande retournée', message: (id) => `Votre commande ${id} nous a été retournée. Contactez-nous pour organiser une nouvelle livraison.` },
 };
+
+/** Delivery follow-up of an order: one state at a time, or none. */
+const DELIVERY_STATES = new Set(['in_transit', 'delivered', 'returned']);
+
+/** Current delivery state, including orders saved before it existed (delivered: true). */
+function deliveryStateOf(order: Record<string, unknown>): string | null {
+  if (typeof order.deliveryState === 'string' && DELIVERY_STATES.has(order.deliveryState)) return order.deliveryState;
+  return order.delivered === true ? 'delivered' : null;
+}
 
 /** Tells the owner of an order (if it was placed with an account) about a change. Never blocks the update. */
 async function notifyOrderOwner(order: Record<string, unknown>, orderId: string, kind: keyof typeof ORDER_NOTICES | string) {
@@ -2097,9 +2108,13 @@ async function notifyOrderOwner(order: Record<string, unknown>, orderId: string,
   }
 }
 
+// Status and/or delivery state of an order. A sale counts in the revenue only once it is
+// "completed" AND delivered; deliveredAt dates it. `delivered` (boolean) is still accepted.
 app.patch('/api/admin/orders/:id', async (req, res) => {
   const { status, delivered } = req.body ?? {};
-  if (status === undefined && delivered === undefined) {
+  let { deliveryState } = req.body ?? {};
+  if (deliveryState === undefined && typeof delivered === 'boolean') deliveryState = delivered ? 'delivered' : null;
+  if (status === undefined && deliveryState === undefined) {
     res.status(400).json({ error: 'Rien à modifier.' });
     return;
   }
@@ -2107,8 +2122,8 @@ app.patch('/api/admin/orders/:id', async (req, res) => {
     res.status(400).json({ error: 'Statut de commande invalide.' });
     return;
   }
-  if (delivered !== undefined && typeof delivered !== 'boolean') {
-    res.status(400).json({ error: 'Valeur « livrée » invalide.' });
+  if (deliveryState !== undefined && deliveryState !== null && !DELIVERY_STATES.has(deliveryState)) {
+    res.status(400).json({ error: 'État de livraison invalide.' });
     return;
   }
   try {
@@ -2118,17 +2133,21 @@ app.patch('/api/admin/orders/:id', async (req, res) => {
       res.status(404).json({ error: 'Commande introuvable.' });
       return;
     }
+    const before = snapshot.data() ?? {};
+    const previousState = deliveryStateOf(before);
     const changes: Record<string, unknown> = {};
     if (status !== undefined) changes.status = status;
-    if (delivered !== undefined) {
-      changes.delivered = delivered;
-      changes.deliveredAt = delivered ? new Date().toISOString() : null;
+    if (deliveryState !== undefined) {
+      changes.deliveryState = deliveryState;
+      changes.delivered = deliveryState === 'delivered';
+      changes.deliveredAt = deliveryState === 'delivered'
+        ? (previousState === 'delivered' && typeof before.deliveredAt === 'string' ? before.deliveredAt : new Date().toISOString())
+        : null;
     }
     await ref.update({ ...changes, updatedAt: FieldValue.serverTimestamp() });
-    const before = snapshot.data() ?? {};
     ordersCache.upsert({ ...toStoredRecord(ref.id, before), ...changes });
     if (status !== undefined && status !== before.status) await notifyOrderOwner(before, ref.id, status);
-    if (delivered === true && before.delivered !== true) await notifyOrderOwner(before, ref.id, 'delivered');
+    if (deliveryState && deliveryState !== previousState) await notifyOrderOwner(before, ref.id, deliveryState);
     res.json({ ok: true, ...changes });
   } catch (error) {
     sendFirebaseError(res, error);

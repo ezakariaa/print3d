@@ -21,6 +21,7 @@ import {
   updateAdminUserStatus,
   type AdminOrder,
   type AdminQuote,
+  type DeliveryState,
   type Expense,
   type AdminUser,
   type UserProfile,
@@ -482,16 +483,17 @@ export function Admin() {
     }
   };
 
-  const changeOrderDelivered = async (id: string, delivered: boolean) => {
+  const changeOrderDelivery = async (id: string, deliveryState: DeliveryState | null) => {
     const previous = orders.find((item) => item.orderId === id);
+    const delivered = deliveryState === 'delivered';
     // Show it right away; put the previous state back if the server refuses.
     setOrders((current) => current.map((item) => item.orderId === id
-      ? { ...item, delivered, deliveredAt: delivered ? new Date().toISOString() : null }
+      ? { ...item, deliveryState, delivered, deliveredAt: delivered ? (item.deliveredAt ?? new Date().toISOString()) : null }
       : item));
     try {
-      const result = await updateAdminOrderDelivery(id, delivered);
+      const result = await updateAdminOrderDelivery(id, deliveryState);
       setOrders((current) => current.map((item) => item.orderId === id
-        ? { ...item, delivered, deliveredAt: result.deliveredAt ?? null }
+        ? { ...item, deliveryState, delivered, deliveredAt: result.deliveredAt ?? null }
         : item));
     } catch (err) {
       if (previous) setOrders((current) => current.map((item) => item.orderId === id ? previous : item));
@@ -674,7 +676,7 @@ export function Admin() {
           orders={orders}
           products={products}
           onStatusChange={(orderId, status) => void changeOrderStatus(orderId, status)}
-          onDeliveredChange={(orderId, delivered) => void changeOrderDelivered(orderId, delivered)}
+          onDeliveryChange={(orderId, state) => void changeOrderDelivery(orderId, state)}
           onOrderSaved={(saved) => setOrders((current) => current.map((item) => item.orderId === saved.orderId ? saved : item))}
           onDelete={(order) => void removeOrder(order)}
         />

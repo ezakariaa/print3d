@@ -159,7 +159,9 @@ export interface AdminOrder {
   subtotal?: number;
   shipping?: { carrierId: string; carrierName: string; price: number; delay: string } | null;
   paymentMethod?: PaymentMethod;
-  /** Ticked by the administrator once the parcel is delivered. */
+  /** Delivery follow-up set by the administrator (one state at a time). */
+  deliveryState?: DeliveryState | null;
+  /** True when deliveryState is "delivered" (kept for older orders). */
   delivered?: boolean;
   deliveredAt?: string | null;
   total: number;
@@ -466,11 +468,13 @@ export function deleteAdminExpense(id: string) {
   return adminRequest<{ ok: boolean }>(`/admin/expenses/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
-/** Marks an order as delivered (or not); a completed and delivered order counts as a validated sale. */
-export function updateAdminOrderDelivery(orderId: string, delivered: boolean) {
+export type DeliveryState = 'in_transit' | 'delivered' | 'returned';
+
+/** Sets the delivery state of an order (null = none); a completed and delivered order is a validated sale. */
+export function updateAdminOrderDelivery(orderId: string, deliveryState: DeliveryState | null) {
   return adminRequest<{ ok: boolean; deliveredAt?: string | null }>(`/admin/orders/${encodeURIComponent(orderId)}`, {
     method: 'PATCH',
-    body: JSON.stringify({ delivered }),
+    body: JSON.stringify({ deliveryState }),
   });
 }
 
