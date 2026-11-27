@@ -147,6 +147,8 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 
 export interface AdminOrder {
   orderId: string;
+  /** Account that placed the order (absent for guest orders). */
+  uid?: string | null;
   items: Array<{
     productId?: string;
     slug?: string;
@@ -187,6 +189,10 @@ export interface AdminUser {
   firstName: string;
   lastName: string;
   fullName: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  country?: string;
   role: 'Administrateur' | 'Utilisateur';
   emailVerified: boolean;
   disabled: boolean;
@@ -272,6 +278,26 @@ export function updateAdminUserStatus(uid: string, disabled: boolean) {
     method: 'PATCH',
     body: JSON.stringify({ disabled }),
   });
+}
+
+export interface AdminUserDetails {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  address: string;
+  city: string;
+  country: string;
+}
+
+export function saveAdminUser(uid: string, details: AdminUserDetails) {
+  return adminRequest<{ ok: boolean; updatedOrders?: number }>(`/admin/users/${encodeURIComponent(uid)}`, {
+    method: 'PUT',
+    body: JSON.stringify(details),
+  });
+}
+
+export function deleteAdminUser(uid: string) {
+  return adminRequest<{ ok: boolean }>(`/admin/users/${encodeURIComponent(uid)}`, { method: 'DELETE' });
 }
 
 export function fetchAdminServices() {

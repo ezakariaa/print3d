@@ -1377,8 +1377,132 @@ html[data-theme='light'] .prod-card {
   }
 }
 
-.users-table tr.is-disabled td:not(:last-child) {
+// A disabled account is dimmed, except its access switch and its actions.
+.users-table tr.is-disabled td:not(:nth-last-child(-n + 2)) {
   opacity: 0.55;
+}
+
+.user-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+
+  .admin-icon-btn:disabled {
+    opacity: 0.3;
+  }
+}
+
+.user-avatar.is-lg {
+  flex-basis: 3.5rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  font-size: 1.1rem;
+}
+
+.user-access {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(31, 157, 85, 0.12);
+  color: #1f9d55;
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  &.is-off {
+    background: rgba(229, 72, 77, 0.12);
+    color: #e5484d;
+  }
+}
+
+.user-preview-head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.user-preview-name {
+  overflow: hidden;
+  font-size: 1.25rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-preview-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+
+  > div {
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--dashboard-panel-border);
+    border-radius: 0.85rem;
+    background: var(--dashboard-row-bg);
+    color: var(--dashboard-muted);
+    font-size: 0.8rem;
+  }
+
+  @media (max-width: 575.98px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.user-preview-stat {
+  color: var(--dashboard-text, inherit);
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+.user-preview-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1.5rem;
+  margin-bottom: 1.5rem;
+
+  dt {
+    color: var(--dashboard-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  @media (max-width: 575.98px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.user-preview-orders {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: grid;
+    grid-template-columns: 1fr auto auto 6.5rem;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid var(--dashboard-panel-border);
+    border-radius: 0.75rem;
+  }
+
+  @media (max-width: 575.98px) {
+    li {
+      grid-template-columns: 1fr auto;
+    }
+  }
 }
 
 // "Transporteurs & Livraison": city tester, one card per carrier with its zones.

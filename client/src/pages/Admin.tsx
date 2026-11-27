@@ -4,6 +4,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   deleteAdminOrder,
   deleteAdminProduct,
+  deleteAdminUser,
+  saveAdminUser,
+  type AdminUserDetails,
   fetchAdminExpenses,
   fetchAdminOptionCategories,
   fetchAdminOrders,
@@ -470,6 +473,40 @@ export function Admin() {
     }
   };
 
+  const saveUser = async (uid: string, details: AdminUserDetails) => {
+    const result = await saveAdminUser(uid, details);
+    const fullName = `${details.firstName} ${details.lastName}`.trim();
+    setUsers((current) => current.map((item) => (item.uid === uid ? { ...item, ...details, fullName } : item)));
+    // The customer's orders now carry the new details.
+    setOrders((current) => current.map((order) => (order.uid === uid && order.status !== 'cancelled'
+      ? {
+        ...order,
+        customer: {
+          ...order.customer,
+          name: fullName,
+          ...(details.phone ? { phone: details.phone } : {}),
+          ...(details.address ? { address: details.address } : {}),
+          ...(details.city ? { city: details.city } : {}),
+        },
+      }
+      : order)));
+    const updated = result.updatedOrders ?? 0;
+    setNotice(`Compte mis à jour${updated ? ` (${updated} commande${updated > 1 ? 's' : ''} actualisée${updated > 1 ? 's' : ''})` : ''}.`);
+  };
+
+  const removeUser = async (user: AdminUser) => {
+    const name = user.fullName || user.email;
+    if (!window.confirm(`Supprimer définitivement le compte de « ${name} » ?\n\nSon profil, son panier, sa wishlist et ses notifications seront effacés. Ses commandes sont conservées.`)) return;
+    setError('');
+    try {
+      await deleteAdminUser(user.uid);
+      setUsers((current) => current.filter((item) => item.uid !== user.uid));
+      setNotice('Compte supprimé.');
+    } catch (err) {
+      showError(err);
+    }
+  };
+
   const changeOrderStatus = async (id: string, status: string) => {
     const previous = orders.find((item) => item.orderId === id)?.status;
     // Show the new status right away; put the old one back if the server refuses.
@@ -669,7 +706,13 @@ export function Admin() {
 
       {loading && <p className="text-secondary">Chargement…</p>}
       {isUsersPage && (
-        <AdminUsers users={users} onToggle={(uid, disabled) => void toggleUserStatus(uid, disabled)} />
+        <AdminUsers
+          users={users}
+          orders={orders}
+          onToggle={(uid, disabled) => void toggleUserStatus(uid, disabled)}
+          onSave={saveUser}
+          onDelete={(user) => void removeUser(user)}
+        />
       )}
 
       {section === 'orders' && (

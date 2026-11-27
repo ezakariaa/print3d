@@ -1751,6 +1751,10 @@ app.get('/api/admin/users', async (_req, res) => {
         firstName,
         lastName,
         fullName,
+        phone: profile?.phone ?? '',
+        address: profile?.address ?? '',
+        city: profile?.city ?? '',
+        country: profile?.country ?? '',
         role: isAdmin ? 'Administrateur' : 'Utilisateur',
         emailVerified: user.emailVerified,
         disabled: user.disabled,
@@ -1777,6 +1781,72 @@ app.patch('/api/admin/users/:uid', async (req, res) => {
       return;
     }
     await auth.updateUser(user.uid, { disabled: req.body.disabled });
+    res.json({ ok: true });
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
+/** The administrator edits a customer's details (same fields as "Mon profil", all but the name optional). */
+app.put('/api/admin/users/:uid', async (req, res) => {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const limits = { firstName: 100, lastName: 100, phone: 40, address: 300, city: 100, country: 100 } as const;
+  const fields = {} as Record<keyof typeof limits, string>;
+  for (const [key, max] of Object.entries(limits) as Array<[keyof typeof limits, number]>) {
+    const value = body[key] ?? '';
+    if (typeof value !== 'string' || value.length > max) {
+      res.status(400).json({ error: 'Vérifiez les informations du compte.' });
+      return;
+    }
+    fields[key] = value.trim();
+  }
+  if (!fields.firstName || !fields.lastName) {
+    res.status(400).json({ error: 'Le prénom et le nom sont obligatoires.' });
+    return;
+  }
+  try {
+    const user = await getAuth(getConfiguredApp()).getUser(req.params.uid);
+    const profile: StoredProfile = { id: user.uid, ...fields, email: user.email ?? '' };
+    const { id: _id, ...stored } = profile;
+    await getDb().collection('Users').doc(user.uid).set(
+      { ...stored, updatedAt: FieldValue.serverTimestamp() },
+      { merge: true },
+    );
+    profilesCache.upsert(profile);
+    const updatedOrders = await syncOpenOrdersWithProfile(user.uid, profile);
+    res.json({ ok: true, updatedOrders });
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
+/**
+ * Deletes an account: sign-in, profile, cart, wishlist and notifications. Its orders are kept
+ * (sales history and invoices).
+ */
+app.delete('/api/admin/users/:uid', async (req, res) => {
+  try {
+    const auth = getAuth(getConfiguredApp());
+    const user = await auth.getUser(req.params.uid);
+    const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+    if (user.email?.toLowerCase() === adminEmail) {
+      res.status(400).json({ error: 'Le compte administrateur principal ne peut pas être supprimé.' });
+      return;
+    }
+    const db = getDb();
+    const batch = db.batch();
+    const [cartItems, notifications] = await Promise.all([
+      db.collection('Carts').doc(user.uid).collection('items').get(),
+      db.collection('Notifications').where('uid', '==', user.uid).get(),
+    ]);
+    cartItems.docs.forEach((doc) => batch.delete(doc.ref));
+    notifications.docs.forEach((doc) => batch.delete(doc.ref));
+    batch.delete(db.collection('Carts').doc(user.uid));
+    batch.delete(db.collection('Wishlists').doc(user.uid));
+    batch.delete(db.collection('Users').doc(user.uid));
+    await batch.commit();
+    profilesCache.remove(user.uid);
+    await auth.deleteUser(user.uid);
     res.json({ ok: true });
   } catch (error) {
     sendFirebaseError(res, error);
