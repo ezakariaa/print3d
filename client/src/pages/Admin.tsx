@@ -42,6 +42,7 @@ import { AdminCarriers } from './AdminCarriers';
 import { AdminOptions } from './AdminOptions';
 import { AdminOrdersTable } from './AdminOrdersTable';
 import { AdminServices } from './AdminServices';
+import { ClientDashboard } from '../components/ClientDashboard';
 
 type AdminSection = 'users' | 'orders' | 'products' | 'options' | 'quotes' | 'services' | 'carriers';
 
@@ -576,7 +577,7 @@ export function Admin() {
                 <line x1="19" y1="12" x2="5" y2="12" />
                 <polyline points="12 19 5 12 12 5" />
               </svg>
-              Retour a l'espace client
+              Retour à l’espace client
             </Button>
           )}
           <Button
@@ -602,7 +603,7 @@ export function Admin() {
               <polyline points="16 17 21 12 16 7" />
               <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
-            Se deconnecter
+            Se déconnecter
           </Button>
         </div>
       </div>
@@ -610,97 +611,21 @@ export function Admin() {
         <Alert variant="warning" dismissible onClose={() => setError('')}>{error}</Alert>
       )}
       {notice && <Alert className="alert-soft" dismissible onClose={() => setNotice('')}>{notice}</Alert>}
-      {!isManagementPage && <Row className="g-4 align-items-stretch mb-4">
-        <Col lg={4}>
-          <section className="profile-overview h-100">
-            <header className="profile-overview-header">
-              <div className="profile-avatar" aria-label={`Initiales : ${profileInitials}`}>
-                {profileInitials}
-              </div>
-              <h2>{profileName || 'Votre profil'}</h2>
-              <p className="mb-2">{profileEmail}</p>
-              <div>
-                <span className="badge" style={profile.role === 'Administrateur' ? { background: '#d4af37', color: '#fff' } : { background: '#1f9d55', color: '#fff' }}>
-                  {profile.role || 'Utilisateur'}
-                </span>
-              </div>
-            </header>
-            <h3>Informations</h3>
-            <dl className="profile-overview-list">
-              <div><dt>E-mail</dt><dd>{profileEmail}</dd></div>
-              <div><dt>Adresse</dt><dd>{profile.address || 'Non renseignée'}</dd></div>
-              <div><dt>Ville</dt><dd>{profile.city || 'Non renseignée'}</dd></div>
-              <div><dt>Pays</dt><dd>{profile.country || 'Non renseigné'}</dd></div>
-              <div><dt>Téléphone</dt><dd>{profile.phone || 'Non renseigné'}</dd></div>
-            </dl>
-          </section>
-        </Col>
-        <Col lg={8}>
-          <div className="admin-dashboard-grid h-100">
-              <Link to="/profile" className="admin-dashboard-card">
-                <div className="admin-dashboard-card-heading">
-                  <span className="admin-dashboard-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" /><path d="M5 20c.7-3.6 3.1-5.5 7-5.5s6.3 1.9 7 5.5" /></svg>
-                  </span>
-                  <h2>Mon profil</h2>
-                </div>
-                <p>Consultez et modifiez vos coordonnées personnelles.</p>
-              </Link>
-              <Link to="/wishlist" className="admin-dashboard-card">
-                <div className="admin-dashboard-card-heading">
-                  <span className="admin-dashboard-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-7.5-4.6-9.3-9.4C1.4 7.6 3.6 4 7.2 4c2 0 3.6 1.1 4.8 2.8C13.2 5.1 14.8 4 16.8 4c3.6 0 5.8 3.6 4.5 7.1-1.8 4.8-9.3 9.4-9.3 9.4Z" /></svg>
-                  </span>
-                  <h2>Ma wishlist</h2>
-                </div>
-                <p>
-                  {wishlistCount > 0
-                    ? `${wishlistCount} produit${wishlistCount > 1 ? 's' : ''} mis de côté.`
-                    : 'Retrouvez les produits que vous avez aimés.'}
-                </p>
-              </Link>
-              {/* The administrator sees every order in "Gestion des commandes". */}
-              {!isAdmin && (
-              <Link to="/mes-commandes" className="admin-dashboard-card">
-                <div className="admin-dashboard-card-heading">
-                  <span className="admin-dashboard-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none"><path d="M6 7h12l-1 13H7L6 7Z" /><path d="M9 7a3 3 0 0 1 6 0" /><path d="m9.5 13.5 1.8 1.8 3.4-3.6" /></svg>
-                  </span>
-                  <h2>Mes commandes</h2>
-                </div>
-                <p>Suivez vos commandes, leur statut et téléchargez vos factures.</p>
-              </Link>
-              )}
-              {isAdmin && ([
-                'users', 'orders', 'products', 'options', 'quotes', 'services', 'carriers',
-              ] as const).map((key) => [key, ADMIN_SECTIONS[key].title, ADMIN_SECTIONS[key].description, key] as const)
-                .map(([tab, title, description, icon]) => (
-                <button
-                  key={tab}
-                  type="button"
-                  className="admin-dashboard-card"
-                  onClick={() => navigate(ADMIN_SECTIONS[tab].path)}
-                >
-                  <div className="admin-dashboard-card-heading">
-                    <span className="admin-dashboard-icon" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" fill="none">
-                        {icon === 'users' && <><circle cx="9" cy="8" r="3" /><path d="M3 19c.5-3 2.5-4.5 6-4.5s5.5 1.5 6 4.5M16 5.5a3 3 0 0 1 0 5.8M18 15c1.9.7 2.8 2 3 4" /></>}
-                        {icon === 'orders' && <><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" /></>}
-                        {icon === 'products' && <><path d="m12 3 9 5-9 5-9-5 9-5ZM3 12l9 5 9-5M3 16l9 5 9-5" /></>}
-                        {icon === 'options' && <><path d="M4 6h16M4 12h16M4 18h16" /><circle cx="9" cy="6" r="2" /><circle cx="15" cy="12" r="2" /><circle cx="8" cy="18" r="2" /></>}
-                        {icon === 'quotes' && <><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h4" /><path d="m16 16 1.5 1.5L21 14" /></>}
-                        {icon === 'services' && <><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1m-8.6 8.6-2.1 2.1" /><circle cx="12" cy="12" r="5" /></>}
-                        {icon === 'carriers' && <><path d="M2 6h11v10H2zM13 9h4l4 4v3h-8" /><circle cx="6" cy="18" r="2" /><circle cx="17" cy="18" r="2" /></>}
-                      </svg>
-                    </span>
-                    <h2>{title}</h2>
-                  </div>
-                  <p>{description}</p>
-                </button>
-              ))}
-          </div>
-        </Col>
-      </Row>}
+      {!isManagementPage && (
+        <ClientDashboard
+          isAdmin={isAdmin}
+          profile={profile}
+          profileName={profileName}
+          profileEmail={profileEmail}
+          profileInitials={profileInitials}
+          wishlistCount={wishlistCount}
+          orders={orders}
+          products={products}
+          quotes={quotes}
+          users={users}
+          sections={ADMIN_SECTIONS}
+        />
+      )}
 
       {loading && <p className="text-secondary">Chargement…</p>}
       {isUsersPage && (
