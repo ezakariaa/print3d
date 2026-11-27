@@ -1320,6 +1320,67 @@ html[data-theme='light'] .prod-card {
   }
 }
 
+// "Gestion des utilisateurs".
+.prod-stat.is-admin {
+  --stat-accent: #d4af37;
+}
+
+.user-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 14rem;
+}
+
+.user-avatar {
+  display: grid;
+  flex: 0 0 2.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--dashboard-icon-bg);
+  color: var(--brand-teal);
+  font-size: 0.85rem;
+  font-weight: 800;
+
+  &.is-admin {
+    background: rgba(212, 175, 55, 0.16);
+    color: #c99a1e;
+  }
+}
+
+.user-names {
+  display: grid;
+  min-width: 0;
+
+  .admin-order-link {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.user-verified {
+  display: inline-block;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--dashboard-row-bg);
+  color: var(--dashboard-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &.is-yes {
+    background: rgba(31, 157, 85, 0.12);
+    color: #1f9d55;
+  }
+}
+
+.users-table tr.is-disabled td:not(:last-child) {
+  opacity: 0.55;
+}
+
 // "Transporteurs & Livraison": city tester, one card per carrier with its zones.
 .car-toolbar {
   display: flex;

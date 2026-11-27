@@ -45,6 +45,7 @@ import { AdminCarriers } from './AdminCarriers';
 import { AdminOptions } from './AdminOptions';
 import { AdminOrdersTable } from './AdminOrdersTable';
 import { AdminServices } from './AdminServices';
+import { AdminUsers } from './AdminUsers';
 import { AdminSales } from './AdminSales';
 import { AdminExpenses } from './AdminExpenses';
 import { ClientDashboard } from '../components/ClientDashboard';
@@ -665,54 +666,7 @@ export function Admin() {
 
       {loading && <p className="text-secondary">Chargement…</p>}
       {isUsersPage && (
-        <div className="table-responsive custom-panel">
-          <Table hover className="align-middle mb-0 admin-product-table">
-            <thead>
-              <tr>
-                <th>Utilisateur</th>
-                <th>E-mail</th>
-                <th>Rôle</th>
-                <th>Vérifié</th>
-                <th>Création</th>
-                <th>Dernière connexion</th>
-                <th>Statut</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.uid}>
-                  <td>
-                    <div className="fw-semibold">{u.fullName || u.displayName || u.email}</div>
-                    <small className="text-secondary">{u.uid}</small>
-                  </td>
-                  <td>{u.email}</td>
-                  <td>
-                    <span className="badge" style={u.role === 'Administrateur' ? { background: '#d4af37', color: '#fff' } : { background: '#1f9d55', color: '#fff' }}>
-                      {u.role}
-                    </span>
-                  </td>
-                  <td>{u.emailVerified ? 'Oui' : 'Non'}</td>
-                  <td>{dateLabel(u.createdAt)}</td>
-                  <td>{dateLabel(u.lastSignInAt)}</td>
-                  <td>
-                    <Form.Check
-                      type="switch"
-                      id={`user-status-${u.uid}`}
-                      label={u.disabled ? 'Désactivé' : 'Actif'}
-                      checked={!u.disabled}
-                      onChange={(e) => void toggleUserStatus(u.uid, !e.target.checked)}
-                    />
-                  </td>
-                </tr>
-              ))}
-              {users.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="text-secondary">Aucun utilisateur enregistré.</td>
-                </tr>
-              )}
-            </tbody>
-          </Table>
-        </div>
+        <AdminUsers users={users} onToggle={(uid, disabled) => void toggleUserStatus(uid, disabled)} />
       )}
 
       {section === 'orders' && (
