@@ -307,7 +307,8 @@ export function Admin() {
       setQuotes([]);
       setProfile(emptyProfile);
       invalidateCache('profile:');
-      navigate('/admin', { replace: true });
+      // After logout, go straight back to the home page.
+      navigate('/', { replace: true });
     }
   };
 
