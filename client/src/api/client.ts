@@ -140,6 +140,9 @@ export interface AdminOrder {
   subtotal?: number;
   shipping?: { carrierId: string; carrierName: string; price: number; delay: string } | null;
   paymentMethod?: PaymentMethod;
+  /** Ticked by the administrator once the parcel is delivered. */
+  delivered?: boolean;
+  deliveredAt?: string | null;
   total: number;
   status: string;
   createdAt: string | null;
@@ -442,6 +445,14 @@ export function saveAdminExpense(expense: Expense) {
 
 export function deleteAdminExpense(id: string) {
   return adminRequest<{ ok: boolean }>(`/admin/expenses/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
+/** Marks an order as delivered (or not); a completed and delivered order counts as a validated sale. */
+export function updateAdminOrderDelivery(orderId: string, delivered: boolean) {
+  return adminRequest<{ ok: boolean; deliveredAt?: string | null }>(`/admin/orders/${encodeURIComponent(orderId)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ delivered }),
+  });
 }
 
 export function fetchAdminQuotes() {

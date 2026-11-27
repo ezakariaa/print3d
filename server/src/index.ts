@@ -1949,9 +1949,20 @@ app.get('/api/admin/orders', async (_req, res) => {
 
 const ORDER_STATUSES = new Set(['pending', 'processing', 'completed', 'cancelled']);
 
+// Status and/or delivery of an order. A sale counts in the revenue only once it is
+// "completed" AND delivered; deliveredAt dates it.
 app.patch('/api/admin/orders/:id', async (req, res) => {
-  if (!ORDER_STATUSES.has(req.body?.status)) {
+  const { status, delivered } = req.body ?? {};
+  if (status === undefined && delivered === undefined) {
+    res.status(400).json({ error: 'Rien à modifier.' });
+    return;
+  }
+  if (status !== undefined && !ORDER_STATUSES.has(status)) {
     res.status(400).json({ error: 'Statut de commande invalide.' });
+    return;
+  }
+  if (delivered !== undefined && typeof delivered !== 'boolean') {
+    res.status(400).json({ error: 'Valeur « livrée » invalide.' });
     return;
   }
   try {
@@ -1961,9 +1972,15 @@ app.patch('/api/admin/orders/:id', async (req, res) => {
       res.status(404).json({ error: 'Commande introuvable.' });
       return;
     }
-    await ref.update({ status: req.body.status, updatedAt: FieldValue.serverTimestamp() });
-    ordersCache.upsert({ ...toStoredRecord(ref.id, snapshot.data() ?? {}), status: req.body.status });
-    res.json({ ok: true });
+    const changes: Record<string, unknown> = {};
+    if (status !== undefined) changes.status = status;
+    if (delivered !== undefined) {
+      changes.delivered = delivered;
+      changes.deliveredAt = delivered ? new Date().toISOString() : null;
+    }
+    await ref.update({ ...changes, updatedAt: FieldValue.serverTimestamp() });
+    ordersCache.upsert({ ...toStoredRecord(ref.id, snapshot.data() ?? {}), ...changes });
+    res.json({ ok: true, ...changes });
   } catch (error) {
     sendFirebaseError(res, error);
   }

@@ -1075,6 +1075,10 @@ html[data-theme='light'] .product-preview-details {
   &.is-5 {
     grid-template-columns: repeat(5, minmax(0, 1fr));
   }
+
+  &.is-6 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .finance-stat {
@@ -1090,6 +1094,7 @@ html[data-theme='light'] .product-preview-details {
 
   &.is-sales { --stat-line: var(--sales); }
   &.is-expense { --stat-line: var(--expense); }
+  &.is-progress { --stat-line: #c99a1e; }
   &.is-positive { --stat-line: #1f9d55; }
   &.is-negative { --stat-line: #e5484d; }
 }
@@ -1368,7 +1373,8 @@ html[data-theme='light'] .finance-tooltip {
 
 @media (max-width: 767.98px) {
   .finance-stats,
-  .finance-stats.is-5 {
+  .finance-stats.is-5,
+  .finance-stats.is-6 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -3258,6 +3264,73 @@ html[data-theme='light'] .ao-card {
   margin-bottom: 0.75rem;
 }
 
+.ao-shipping-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem 0.75rem;
+}
+
+// "Livrée" checkbox next to the carrier.
+.form-check.ao-delivered {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 0;
+  margin: 0;
+  padding: 0.15rem 0.6rem 0.15rem 0.45rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+
+  .form-check-input {
+    float: none;
+    margin: 0;
+
+    &:checked {
+      border-color: #1f9d55;
+      background-color: #1f9d55;
+    }
+  }
+
+  .form-check-label {
+    cursor: pointer;
+  }
+
+  &.is-checked {
+    border-color: rgba(31, 157, 85, 0.5);
+    background: rgba(31, 157, 85, 0.1);
+    color: #1f9d55;
+  }
+}
+
+// Is the order in the revenue? (validated = completed AND delivered)
+.ao-sale-state {
+  display: inline-block;
+  margin-top: 0.45rem;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+
+  &.is-validated {
+    background: rgba(31, 157, 85, 0.14);
+    color: #1f9d55;
+  }
+
+  &.is-progress {
+    background: rgba(212, 167, 44, 0.16);
+    color: #c99a1e;
+  }
+
+  &.is-cancelled {
+    background: rgba(229, 72, 77, 0.12);
+    color: #e5484d;
+  }
+}
+
 .ao-summary {
   display: grid;
   gap: 0.25rem;
@@ -3367,7 +3440,7 @@ html[data-theme='light'] .mo-card {
 // Progress: Reçue → En préparation → Terminée.
 .mo-progress {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   margin: 0;
   padding: 1.25rem 1.5rem 0.5rem;
   list-style: none;

@@ -16,6 +16,7 @@ import {
   fetchAdminUsers as _fetchAdminUsers,
   updateAdminProductStatus,
   updateAdminOrder,
+  updateAdminOrderDelivery,
   updateAdminQuote,
   updateAdminUserStatus,
   type AdminOrder,
@@ -470,6 +471,23 @@ export function Admin() {
     }
   };
 
+  const changeOrderDelivered = async (id: string, delivered: boolean) => {
+    const previous = orders.find((item) => item.orderId === id);
+    // Show it right away; put the previous state back if the server refuses.
+    setOrders((current) => current.map((item) => item.orderId === id
+      ? { ...item, delivered, deliveredAt: delivered ? new Date().toISOString() : null }
+      : item));
+    try {
+      const result = await updateAdminOrderDelivery(id, delivered);
+      setOrders((current) => current.map((item) => item.orderId === id
+        ? { ...item, delivered, deliveredAt: result.deliveredAt ?? null }
+        : item));
+    } catch (err) {
+      if (previous) setOrders((current) => current.map((item) => item.orderId === id ? previous : item));
+      showError(err);
+    }
+  };
+
   const removeOrder = async (order: AdminOrder) => {
     const confirmed = window.confirm(
       `Supprimer définitivement la commande ${order.orderId} de ${order.customer.name} (${formatPrice(order.total)}) ?\n\nElle disparaîtra aussi de l’espace du client.`,
@@ -694,6 +712,7 @@ export function Admin() {
           orders={orders}
           products={products}
           onStatusChange={(orderId, status) => void changeOrderStatus(orderId, status)}
+          onDeliveredChange={(orderId, delivered) => void changeOrderDelivered(orderId, delivered)}
           onOrderSaved={(saved) => setOrders((current) => current.map((item) => item.orderId === saved.orderId ? saved : item))}
           onDelete={(order) => void removeOrder(order)}
         />

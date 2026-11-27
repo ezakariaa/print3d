@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import type { AdminOrder, AdminQuote, AdminUser, Expense, UserProfile } from '../api/client';
-import { inRange, isoDay, periodRange } from '../config/finance';
+import { inRange, periodRange } from '../config/finance';
+import { isValidatedSale, saleDay } from '../utils/sales';
 import { COMPANY } from '../config/company';
 import type { Product } from '../types';
 import { formatPrice } from '../utils/formatPrice';
@@ -105,7 +106,9 @@ export function ClientDashboard({
   sections,
 }: Props) {
   const pendingOrders = orders.filter((order) => order.status === 'pending').length;
-  const revenue = orders.filter((order) => order.status !== 'cancelled').reduce((sum, order) => sum + order.total, 0);
+  // Revenue = validated sales only (orders completed AND delivered).
+  const validatedSales = orders.filter(isValidatedSale);
+  const revenue = validatedSales.reduce((sum, order) => sum + order.total, 0);
   const newQuotes = quotes.filter((quote) => quote.status === 'new').length;
   const activeProducts = products.filter((product) => product.active !== false).length;
   const latestOrders = [...orders]
@@ -115,7 +118,7 @@ export function ClientDashboard({
   // Current month, for the Finances cards.
   const month = periodRange('month');
   const monthSales = orders
-    .filter((order) => order.status !== 'cancelled' && order.createdAt && inRange(isoDay(new Date(order.createdAt)), month))
+    .filter((order) => isValidatedSale(order) && inRange(saleDay(order), month))
     .reduce((sum, order) => sum + order.total, 0);
   const monthCharges = expenses
     .filter((expense) => inRange(expense.date, month))
@@ -166,7 +169,7 @@ export function ClientDashboard({
             <Link to={sections.orders.path} className="dash-stat is-teal">
               <span className="dash-stat-icon">{ICONS.revenue}</span>
               <span className="dash-stat-value">{formatPrice(revenue, 0)}</span>
-              <span className="dash-stat-label">Chiffre d’affaires ({orders.length} commande{orders.length > 1 ? 's' : ''})</span>
+              <span className="dash-stat-label">Chiffre d’affaires ({validatedSales.length} vente{validatedSales.length > 1 ? 's' : ''} validée{validatedSales.length > 1 ? 's' : ''})</span>
             </Link>
             <Link to={sections.quotes.path} className="dash-stat is-blue">
               <span className="dash-stat-icon">{ICONS.quotes}</span>

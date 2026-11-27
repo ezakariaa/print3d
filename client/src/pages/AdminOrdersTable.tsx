@@ -6,6 +6,7 @@ import { OrderEditModal } from '../components/OrderEditModal';
 import type { Product } from '../types';
 import { formatPrice } from '../utils/formatPrice';
 import { getProductImage } from '../utils/productImages';
+import { isValidatedSale } from '../utils/sales';
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'Toutes' },
@@ -50,13 +51,15 @@ interface Props {
   /** Catalogue: product photos, and adding a product while correcting an order. */
   products: Product[];
   onStatusChange: (orderId: string, status: string) => void;
+  /** Ticks or unticks "Livrée": a completed and delivered order is a validated sale. */
+  onDeliveredChange: (orderId: string, delivered: boolean) => void;
   onOrderSaved: (order: AdminOrder) => void;
   /** Asks for confirmation, then deletes the order. */
   onDelete: (order: AdminOrder) => void;
 }
 
 /** Orders of "Gestion des commandes", one card per order. */
-export function AdminOrdersTable({ orders, products, onStatusChange, onOrderSaved, onDelete }: Props) {
+export function AdminOrdersTable({ orders, products, onStatusChange, onDeliveredChange, onOrderSaved, onDelete }: Props) {
   const [invoiceOrder, setInvoiceOrder] = useState<AdminOrder | null>(null);
   const [editOrder, setEditOrder] = useState<AdminOrder | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -239,16 +242,35 @@ export function AdminOrdersTable({ orders, products, onStatusChange, onOrderSave
 
                 <section className="ao-col ao-col-summary">
                   <h3 className="ao-col-title">Livraison et total</h3>
-                  {order.shipping ? (
-                    <div className="ao-shipping">
-                      <div className="fw-semibold">{order.shipping.carrierName}</div>
-                      <div className="admin-order-muted">
-                        {[order.customer.city, order.shipping.delay].filter(Boolean).join(' · ')}
-                      </div>
+                  <div className="ao-shipping">
+                    <div className="ao-shipping-line">
+                      <span className="fw-semibold">{order.shipping?.carrierName ?? 'Transporteur à définir'}</span>
+                      <Form.Check
+                        type="checkbox"
+                        id={`delivered-${order.orderId}`}
+                        className={`ao-delivered${order.delivered ? ' is-checked' : ''}`}
+                        label="Livrée"
+                        checked={Boolean(order.delivered)}
+                        disabled={order.status === 'cancelled'}
+                        onChange={(event) => onDeliveredChange(order.orderId, event.target.checked)}
+                      />
                     </div>
-                  ) : (
-                    <div className="admin-order-muted mb-2">Transporteur à définir</div>
-                  )}
+                    <div className="admin-order-muted">
+                      {[order.customer.city, order.shipping?.delay].filter(Boolean).join(' · ')}
+                    </div>
+                    {order.delivered && order.deliveredAt && (
+                      <div className="admin-order-muted">
+                        Livrée le {new Date(order.deliveredAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </div>
+                    )}
+                    <span className={`ao-sale-state ${isValidatedSale(order) ? 'is-validated' : order.status === 'cancelled' ? 'is-cancelled' : 'is-progress'}`}>
+                      {isValidatedSale(order)
+                        ? '✓ Vente validée'
+                        : order.status === 'cancelled'
+                          ? 'Hors chiffre d’affaires'
+                          : 'Vente en cours'}
+                    </span>
+                  </div>
                   <div className="ao-summary">
                     <div><span>Sous-total</span><span>{formatPrice(subtotal)}</span></div>
                     <div>

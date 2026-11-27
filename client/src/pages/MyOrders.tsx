@@ -20,6 +20,7 @@ const STEPS = [
   { status: 'pending', label: 'Reçue' },
   { status: 'processing', label: 'En préparation' },
   { status: 'completed', label: 'Terminée' },
+  { status: 'delivered', label: 'Livrée' },
 ];
 
 function dateLabel(value: string | null) {
@@ -38,11 +39,12 @@ function itemDetails(item: AdminOrder['items'][number]) {
   ].filter(Boolean) as string[];
 }
 
-function OrderProgress({ status }: { status: string }) {
+function OrderProgress({ status, delivered }: { status: string; delivered?: boolean }) {
   if (status === 'cancelled') {
     return <div className="mo-cancelled">Cette commande a été annulée.</div>;
   }
-  const current = Math.max(0, STEPS.findIndex((step) => step.status === status));
+  // "Livrée" (last step) once the workshop has ticked the delivery.
+  const current = delivered ? STEPS.length - 1 : Math.max(0, STEPS.findIndex((step) => step.status === status));
   return (
     <ol className="mo-progress" aria-label="Avancement de la commande">
       {STEPS.map((step, index) => (
@@ -52,7 +54,7 @@ function OrderProgress({ status }: { status: string }) {
           aria-current={index === current ? 'step' : undefined}
         >
           <span className="mo-progress-dot" aria-hidden="true">
-            {index < current || (index === current && step.status === 'completed') ? '✓' : index + 1}
+            {index < current || (index === current && step.status === 'delivered') ? '✓' : index + 1}
           </span>
           <span className="mo-progress-label">{step.label}</span>
         </li>
@@ -140,7 +142,7 @@ export function MyOrderCard({
           )}
         </div>
         {/* Progress under the delivery and payment details. */}
-        <OrderProgress status={order.status} />
+        <OrderProgress status={order.status} delivered={order.delivered} />
         </div>
 
         <div className="mo-summary">

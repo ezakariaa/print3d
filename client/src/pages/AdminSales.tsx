@@ -1,28 +1,32 @@
 import { useMemo, useState } from 'react';
 import { Col, Form, Row, Table } from 'react-bootstrap';
 import { PAYMENT_METHOD_LABELS, type AdminOrder, type Expense, type PaymentMethod } from '../api/client';
-import { FINANCE_PERIODS, inRange, isoDay, monthLabel, periodRange, type FinancePeriod } from '../config/finance';
+import { FINANCE_PERIODS, inRange, monthLabel, periodRange, type FinancePeriod } from '../config/finance';
 import { formatPrice } from '../utils/formatPrice';
+import { isSaleInProgress, isValidatedSale, orderDay, saleDay } from '../utils/sales';
 
 /** Months shown on the sales / expenses chart. */
 const CHART_MONTHS = 6;
-
-const orderDay = (order: AdminOrder) => (order.createdAt ? isoDay(new Date(order.createdAt)) : '');
 
 interface Props {
   orders: AdminOrder[];
   expenses: Expense[];
 }
 
-/** "Ventes": revenue from orders (cancelled ones excluded), compared with the expenses. */
+/**
+ * "Ventes": revenue from validated sales only (orders "Terminée" AND delivered, dated by delivery),
+ * the sales still in progress, and the comparison with the expenses.
+ */
 export function AdminSales({ orders, expenses }: Props) {
   const [period, setPeriod] = useState<FinancePeriod>('month');
   const [hovered, setHovered] = useState<string | null>(null);
   const [showTable, setShowTable] = useState(false);
 
-  const sales = useMemo(() => orders.filter((order) => order.status !== 'cancelled' && order.createdAt), [orders]);
+  const sales = useMemo(() => orders.filter((order) => isValidatedSale(order) && saleDay(order)), [orders]);
+  const inProgress = useMemo(() => orders.filter(isSaleInProgress), [orders]);
+  const inProgressTotal = inProgress.reduce((sum, order) => sum + order.total, 0);
   const range = periodRange(period);
-  const periodSales = sales.filter((order) => inRange(orderDay(order), range));
+  const periodSales = sales.filter((order) => inRange(saleDay(order), range));
   const periodExpenses = expenses.filter((expense) => inRange(expense.date, range));
 
   const revenue = periodSales.reduce((sum, order) => sum + order.total, 0);
@@ -40,7 +44,7 @@ export function AdminSales({ orders, expenses }: Props) {
       const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
       return {
         key,
-        sales: sales.filter((order) => orderDay(order).startsWith(key)).reduce((sum, order) => sum + order.total, 0),
+        sales: sales.filter((order) => saleDay(order).startsWith(key)).reduce((sum, order) => sum + order.total, 0),
         charges: expenses.filter((expense) => expense.date.startsWith(key)).reduce((sum, expense) => sum + expense.amount, 0),
       };
     });
@@ -80,24 +84,31 @@ export function AdminSales({ orders, expenses }: Props) {
         >
           {FINANCE_PERIODS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </Form.Select>
-        <span className="text-secondary small">Commandes annulées exclues{cancelled ? ` (${cancelled} sur la période)` : ''}.</span>
+        <span className="text-secondary small">
+          Chiffre d’affaires = commandes <strong>terminées et livrées</strong>, à la date de livraison. Annulées exclues{cancelled ? ` (${cancelled} sur la période)` : ''}.
+        </span>
       </div>
 
-      <div className="finance-stats is-5">
+      <div className="finance-stats is-6">
         <div className="finance-stat is-sales">
           <span className="finance-stat-label">Chiffre d’affaires</span>
           <span className="finance-stat-value">{formatPrice(revenue)}</span>
-          <span className="finance-stat-sub">dont livraison {formatPrice(shipping)}</span>
+          <span className="finance-stat-sub">ventes validées · dont livraison {formatPrice(shipping)}</span>
         </div>
         <div className="finance-stat">
-          <span className="finance-stat-label">Commandes</span>
+          <span className="finance-stat-label">Ventes validées</span>
           <span className="finance-stat-value">{periodSales.length}</span>
           <span className="finance-stat-sub">{periodName}</span>
         </div>
         <div className="finance-stat">
           <span className="finance-stat-label">Panier moyen</span>
           <span className="finance-stat-value">{formatPrice(average)}</span>
-          <span className="finance-stat-sub">par commande</span>
+          <span className="finance-stat-sub">par vente validée</span>
+        </div>
+        <div className="finance-stat is-progress">
+          <span className="finance-stat-label">Ventes en cours</span>
+          <span className="finance-stat-value">{formatPrice(inProgressTotal)}</span>
+          <span className="finance-stat-sub">{inProgress.length} commande{inProgress.length > 1 ? 's' : ''} pas encore terminée{inProgress.length > 1 ? 's' : ''} et livrée{inProgress.length > 1 ? 's' : ''}</span>
         </div>
         <div className="finance-stat is-expense">
           <span className="finance-stat-label">Charges</span>
@@ -113,7 +124,7 @@ export function AdminSales({ orders, expenses }: Props) {
 
       <section className="finance-panel mb-4">
         <div className="finance-chart-head">
-          <h2 className="finance-panel-title mb-0">Ventes et charges, {CHART_MONTHS} derniers mois</h2>
+          <h2 className="finance-panel-title mb-0">Ventes validées et charges, {CHART_MONTHS} derniers mois</h2>
           <div className="finance-legend">
             <span><i className="is-sales" aria-hidden="true" />Ventes</span>
             <span><i className="is-expense" aria-hidden="true" />Charges</span>
