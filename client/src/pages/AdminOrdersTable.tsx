@@ -243,9 +243,24 @@ export function AdminOrdersTable({ orders, products, onStatusChange, onDeliveryC
                 <section className="ao-col ao-col-summary">
                   <h3 className="ao-col-title">Livraison et total</h3>
                   <div className="ao-shipping">
+                    <div className="ao-shipping-row">
+                    <div className="ao-shipping-info">
                     <span className="fw-semibold">{order.shipping?.carrierName ?? 'Transporteur à définir'}</span>
                     <div className="admin-order-muted">
                       {[order.customer.city, order.shipping?.delay].filter(Boolean).join(' · ')}
+                    </div>
+                    {deliveryStateOf(order) === 'delivered' && order.deliveredAt && (
+                      <div className="admin-order-muted">
+                        Livrée le {new Date(order.deliveredAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </div>
+                    )}
+                    <span className={`ao-sale-state ${isValidatedSale(order) ? 'is-validated' : isOutOfRevenue(order) ? 'is-cancelled' : 'is-progress'}`}>
+                      {isValidatedSale(order)
+                        ? '✓ Vente validée'
+                        : isOutOfRevenue(order)
+                          ? 'Hors chiffre d’affaires'
+                          : 'Vente en cours'}
+                    </span>
                     </div>
                     {/* One delivery state at a time; ticking the checked one again clears it. */}
                     <div className="ao-delivery" role="group" aria-label={`Livraison de la commande ${order.orderId}`}>
@@ -265,18 +280,7 @@ export function AdminOrdersTable({ orders, products, onStatusChange, onDeliveryC
                         );
                       })}
                     </div>
-                    {deliveryStateOf(order) === 'delivered' && order.deliveredAt && (
-                      <div className="admin-order-muted">
-                        Livrée le {new Date(order.deliveredAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                      </div>
-                    )}
-                    <span className={`ao-sale-state ${isValidatedSale(order) ? 'is-validated' : isOutOfRevenue(order) ? 'is-cancelled' : 'is-progress'}`}>
-                      {isValidatedSale(order)
-                        ? '✓ Vente validée'
-                        : isOutOfRevenue(order)
-                          ? 'Hors chiffre d’affaires'
-                          : 'Vente en cours'}
-                    </span>
+                    </div>
                   </div>
                   <div className="ao-summary">
                     <div><span>Sous-total</span><span>{formatPrice(subtotal)}</span></div>

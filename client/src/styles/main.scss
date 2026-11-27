@@ -4696,25 +4696,39 @@ html[data-theme='light'] .ao-card {
   }
 }
 
-// Delivery follow-up: three exclusive boxes, stacked.
+// Carrier details on the left, delivery boxes stacked on the right.
+.ao-shipping-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ao-shipping-info {
+  min-width: 0;
+}
+
+// Delivery follow-up: three exclusive boxes, stacked, compact pills.
 .ao-delivery {
   display: grid;
+  flex: 0 0 auto;
   gap: 0.3rem;
-  margin: 0.55rem 0 0.15rem;
+  justify-items: stretch;
 }
 
 .form-check.ao-delivery-option {
   --delivery-accent: #4f8ff7;
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
   min-height: 0;
   margin: 0;
-  padding: 0.25rem 0.6rem;
+  padding: 0.18rem 0.65rem 0.18rem 0.45rem;
   border: 1px solid var(--dashboard-panel-border);
-  border-radius: 0.55rem;
-  font-size: 0.8rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
   font-weight: 600;
+  white-space: nowrap;
   transition: border-color 0.2s ease, background-color 0.2s ease;
 
   &.is-delivered { --delivery-accent: #1f9d55; }
