@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Alert, Button, Col, Container, Form, Row } from 'react-bootstrap';
 import { Link, useParams } from 'react-router-dom';
 import { fetchOptionCategories, fetchProduct } from '../api/client';
@@ -195,6 +195,32 @@ export function ProductDetail() {
     setAdded(true);
   };
 
+  // Slideshow: the next photo every 3 s, paused while the visitor points at or uses the gallery.
+  const galleryImages = product?.images ?? [];
+  const [galleryPaused, setGalleryPaused] = useState(false);
+  useEffect(() => {
+    if (galleryImages.length < 2 || galleryPaused) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = window.setTimeout(() => {
+      const current = Math.max(0, galleryImages.indexOf(selectedImage));
+      setSelectedImage(galleryImages[(current + 1) % galleryImages.length]);
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [galleryImages, selectedImage, galleryPaused]);
+
+  // Keep the active thumbnail visible inside its strip (without scrolling the page).
+  const thumbsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const strip = thumbsRef.current;
+    const active = strip?.querySelector<HTMLElement>('.is-active');
+    if (!strip || !active) return;
+    strip.scrollTo({
+      top: active.offsetTop - (strip.clientHeight - active.offsetHeight) / 2,
+      left: active.offsetLeft - (strip.clientWidth - active.offsetWidth) / 2,
+      behavior: 'smooth',
+    });
+  }, [selectedImage]);
+
   if (error) {
     return (
       <Container className="page-hero">
@@ -248,9 +274,15 @@ export function ProductDetail() {
       </nav>
       <Row className="gy-4 gx-lg-5">
         <Col lg={7}>
-          <div className="product-gallery">
+          <div
+            className={`product-gallery${images.length > 1 ? '' : ' is-single'}`}
+            onMouseEnter={() => setGalleryPaused(true)}
+            onMouseLeave={() => setGalleryPaused(false)}
+            onFocus={() => setGalleryPaused(true)}
+            onBlur={() => setGalleryPaused(false)}
+          >
             {images.length > 1 && (
-              <div className="product-gallery-thumbs" role="tablist" aria-label="Photos du produit">
+              <div className="product-gallery-thumbs" role="tablist" aria-label="Photos du produit" ref={thumbsRef}>
                 {images.map((image, index) => (
                   <button
                     key={`${index}-${image.slice(0, 32)}`}
