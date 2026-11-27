@@ -1044,6 +1044,260 @@ html[data-theme='light'] .product-preview-details {
   white-space: nowrap;
 }
 
+// "Services": header facts, one card per service, process steps.
+.services-header {
+  max-width: 44rem;
+  margin-bottom: 2.25rem;
+}
+
+.services-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1.1rem 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.8rem;
+    border: 1px solid var(--dashboard-panel-border);
+    border-radius: 999px;
+    color: var(--dashboard-muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+
+    &::before {
+      content: '';
+      width: 0.45rem;
+      height: 0.45rem;
+      border-radius: 50%;
+      background: var(--brand-teal);
+    }
+  }
+}
+
+// As many columns as fit (3 on a wide screen): no lonely card at the end with 3 services.
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+  gap: 1.25rem;
+}
+
+.service-card {
+  --service-accent: #12b8a0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 1.6rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 1.1rem;
+  background: var(--brand-ink-soft);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  transition: transform 0.25s ease, border-color 0.25s ease;
+
+  &.is-resin { --service-accent: #8b5cf6; }
+  &.is-model { --service-accent: #4f8ff7; }
+  &.is-series { --service-accent: #d4a72c; }
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto;
+    height: 3px;
+    background: var(--service-accent);
+  }
+
+  &:hover {
+    transform: translateY(-4px);
+    border-color: var(--service-accent);
+  }
+
+  &.is-loading {
+    min-height: 18rem;
+    background: var(--dashboard-row-bg);
+    box-shadow: none;
+  }
+}
+
+html[data-theme='light'] .service-card:not(.is-loading) {
+  background: #fff;
+  box-shadow: 0 10px 30px rgba(23, 36, 45, 0.06);
+}
+
+.service-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.service-card-icon {
+  display: grid;
+  flex: 0 0 3rem;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 0.85rem;
+  background: color-mix(in srgb, var(--service-accent) 15%, transparent);
+  color: var(--service-accent);
+
+  svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+}
+
+.service-card-title {
+  margin-bottom: 0.3rem;
+  font-size: 1.3rem;
+}
+
+.service-card-summary {
+  margin: 0;
+  color: var(--dashboard-muted);
+  font-size: 0.92rem;
+}
+
+.service-card-points {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+
+  li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+  }
+
+  svg {
+    flex: 0 0 1.05rem;
+    width: 1.05rem;
+    height: 1.05rem;
+    margin-top: 0.15rem;
+    color: var(--service-accent);
+  }
+}
+
+.service-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: auto;
+  padding-top: 1.1rem;
+  border-top: 1px dashed var(--dashboard-panel-border);
+}
+
+.service-card-from {
+  color: var(--dashboard-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.service-card-price {
+  font-family: $headings-font-family;
+  font-size: 1.7rem;
+  line-height: 1.1;
+  color: var(--service-accent);
+
+  span {
+    color: var(--dashboard-muted);
+    font-family: inherit;
+    font-size: 0.95rem;
+  }
+}
+
+.services-process {
+  margin-top: 3.5rem;
+}
+
+.services-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    position: relative;
+    padding-top: 0.25rem;
+  }
+
+  // Line linking the step numbers.
+  li:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 1.45rem;
+    left: 3.25rem;
+    right: 0.5rem;
+    height: 2px;
+    background: linear-gradient(90deg, var(--brand-teal), transparent);
+    opacity: 0.5;
+  }
+}
+
+.services-step-number {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-bottom: 0.85rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--brand-teal);
+  color: #071018;
+  font-family: $headings-font-family;
+  font-size: 1.1rem;
+}
+
+.services-step-title {
+  margin-bottom: 0.3rem;
+  font-size: 1.05rem;
+}
+
+.services-step-text {
+  margin: 0;
+  color: var(--dashboard-muted);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 991.98px) {
+  .services-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 1.75rem;
+
+    li:nth-child(2)::after {
+      display: none;
+    }
+  }
+}
+
+@media (max-width: 767.98px) {
+  .service-card {
+    padding: 1.25rem;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .services-steps {
+    grid-template-columns: 1fr;
+
+    li::after {
+      display: none;
+    }
+  }
+}
+
 // "Personnaliser": hero with photo collage, steps, models, call to action.
 .custom-hero {
   display: grid;
