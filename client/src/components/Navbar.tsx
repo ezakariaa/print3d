@@ -5,6 +5,7 @@ import { useCart } from '../context/CartContext';
 import { useWishlist } from '../context/WishlistContext';
 import { getFirebaseAuth, isFirebaseConfigured, onAuthStateChanged } from '../firebase';
 import { AuthModal } from './AuthModal';
+import { NotificationBell } from './NotificationBell';
 import { formatPrice } from '../utils/formatPrice';
 
 export function Navbar() {
@@ -51,6 +52,7 @@ export function Navbar() {
         </BsNavbar.Brand>
         {/* Phones and tablets: wishlist and cart stay visible next to the menu button. */}
         <div className="nav-quick d-lg-none ms-auto">
+          <NotificationBell onNavigate={close} />
           <Link
             to="/wishlist"
             className="nav-quick-link"
@@ -119,6 +121,9 @@ export function Navbar() {
                 <span className="nav-action-detail">Compte et gestion</span>
               </span>
             </Nav.Link>
+            <Nav.Item className="d-none d-lg-flex align-items-center">
+              <NotificationBell />
+            </Nav.Item>
             <Nav.Link
               as={NavLink}
               to="/wishlist"

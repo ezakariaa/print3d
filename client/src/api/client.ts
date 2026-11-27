@@ -114,6 +114,25 @@ export async function placeOrder(payload: {
   });
 }
 
+export interface UserNotification {
+  id: string;
+  kind: string;
+  orderId?: string;
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+}
+
+/** Notifications of the signed-in customer (only the unread ones when unreadOnly). */
+export function fetchNotifications(unreadOnly = false) {
+  return authenticatedRequest<UserNotification[]>(unreadOnly ? '/notifications?unread=1' : '/notifications');
+}
+
+export function markNotificationsRead() {
+  return authenticatedRequest<{ ok: boolean }>('/notifications/read', { method: 'POST', body: '{}' });
+}
+
 /** Orders of the signed-in customer, newest first. */
 export function fetchMyOrders() {
   return authenticatedRequest<AdminOrder[]>('/my-orders');

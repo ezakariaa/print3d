@@ -1034,6 +1034,46 @@ app.get('/api/wishlist', async (req, res) => {
   }
 });
 
+// Notifications of the signed-in customer. ?unread=1 → only the unread ones (cheap poll).
+app.get('/api/notifications', async (req, res) => {
+  const user = await requireSignedInUser(req, res);
+  if (!user) return;
+  try {
+    let query = getDb().collection('Notifications').where('uid', '==', user.uid);
+    if (req.query.unread === '1') query = query.where('read', '==', false);
+    const snapshot = await query.get();
+    const list = snapshot.docs
+      .map((doc) => {
+        const { uid: _uid, ...data } = doc.data();
+        return { id: doc.id, ...data } as Record<string, unknown> & { id: string; createdAt?: string };
+      })
+      .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))
+      .slice(0, 30);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.json(list);
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
+// Marks the customer's unread notifications as read.
+app.post('/api/notifications/read', async (req, res) => {
+  const user = await requireSignedInUser(req, res);
+  if (!user) return;
+  try {
+    const snapshot = await getDb().collection('Notifications')
+      .where('uid', '==', user.uid).where('read', '==', false).get();
+    if (!snapshot.empty) {
+      const batch = getDb().batch();
+      snapshot.docs.forEach((doc) => batch.update(doc.ref, { read: true }));
+      await batch.commit();
+    }
+    res.json({ ok: true, updated: snapshot.size });
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
 // Orders of the signed-in customer: those placed with the account, plus older ones
 // sent with the same e-mail address when that address is verified.
 app.get('/api/my-orders', async (req, res) => {
@@ -1951,6 +1991,34 @@ const ORDER_STATUSES = new Set(['pending', 'processing', 'completed', 'cancelled
 
 // Status and/or delivery of an order. A sale counts in the revenue only once it is
 // "completed" AND delivered; deliveredAt dates it.
+// ---------- Notifications for the customer of an order ----------
+const ORDER_NOTICES: Record<string, { title: string; message: (id: string) => string }> = {
+  processing: { title: 'Commande en préparation', message: (id) => `Votre commande ${id} est en cours de préparation dans notre atelier.` },
+  completed: { title: 'Commande terminée', message: (id) => `Votre commande ${id} est terminée et prête à être expédiée.` },
+  cancelled: { title: 'Commande annulée', message: (id) => `Votre commande ${id} a été annulée. Contactez-nous pour toute question.` },
+  delivered: { title: 'Commande livrée', message: (id) => `Votre commande ${id} a été livrée. Merci pour votre confiance !` },
+};
+
+/** Tells the owner of an order (if it was placed with an account) about a change. Never blocks the update. */
+async function notifyOrderOwner(order: Record<string, unknown>, orderId: string, kind: keyof typeof ORDER_NOTICES | string) {
+  const notice = ORDER_NOTICES[kind];
+  const uid = typeof order.uid === 'string' ? order.uid : '';
+  if (!notice || !uid) return;
+  try {
+    await getDb().collection('Notifications').add({
+      uid,
+      kind,
+      orderId,
+      title: notice.title,
+      message: notice.message(orderId),
+      read: false,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.warn('[notifications] Création impossible.', error);
+  }
+}
+
 app.patch('/api/admin/orders/:id', async (req, res) => {
   const { status, delivered } = req.body ?? {};
   if (status === undefined && delivered === undefined) {
@@ -1979,7 +2047,10 @@ app.patch('/api/admin/orders/:id', async (req, res) => {
       changes.deliveredAt = delivered ? new Date().toISOString() : null;
     }
     await ref.update({ ...changes, updatedAt: FieldValue.serverTimestamp() });
-    ordersCache.upsert({ ...toStoredRecord(ref.id, snapshot.data() ?? {}), ...changes });
+    const before = snapshot.data() ?? {};
+    ordersCache.upsert({ ...toStoredRecord(ref.id, before), ...changes });
+    if (status !== undefined && status !== before.status) await notifyOrderOwner(before, ref.id, status);
+    if (delivered === true && before.delivered !== true) await notifyOrderOwner(before, ref.id, 'delivered');
     res.json({ ok: true, ...changes });
   } catch (error) {
     sendFirebaseError(res, error);
@@ -2086,8 +2157,10 @@ app.put('/api/admin/orders/:id', async (req, res) => {
       return;
     }
     await ref.update({ ...update, updatedAt: FieldValue.serverTimestamp() });
-    const stored = { ...toStoredRecord(ref.id, snapshot.data() ?? {}), ...update };
+    const before = snapshot.data() ?? {};
+    const stored = { ...toStoredRecord(ref.id, before), ...update };
     ordersCache.upsert(stored);
+    if (update.status !== before.status) await notifyOrderOwner(before, ref.id, update.status);
     const { id: _id, ...order } = stored;
     res.json(order);
   } catch (error) {

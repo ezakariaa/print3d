@@ -3779,6 +3779,199 @@ html[data-theme='light'] .shop-toolbar {
   }
 }
 
+// Notification bell (navigation bar, signed-in customers).
+.notif {
+  position: relative;
+}
+
+.notif-button {
+  position: relative;
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0.6rem;
+  background: transparent;
+  color: var(--brand-mist);
+  transition: color 0.2s ease, background-color 0.2s ease;
+
+  svg {
+    width: 1.3rem;
+    height: 1.3rem;
+  }
+
+  &:hover,
+  &:focus-visible,
+  &[aria-expanded='true'] {
+    background: rgba(18, 184, 160, 0.1);
+    color: var(--brand-teal);
+  }
+}
+
+html[data-theme='light'] .notif-button {
+  color: #26363f;
+}
+
+.notif-count {
+  position: absolute;
+  top: 0.15rem;
+  right: 0.1rem;
+  display: grid;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.25rem;
+  place-items: center;
+  border: 2px solid var(--brand-ink);
+  border-radius: 999px;
+  background: #e5484d;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+html[data-theme='light'] .notif-count {
+  border-color: #fff;
+}
+
+.notif-panel {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  z-index: 1060;
+  width: min(23rem, calc(100vw - 1.5rem));
+  overflow: hidden;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 1rem;
+  background: var(--brand-ink-soft);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme='light'] .notif-panel {
+  background: #fff;
+  box-shadow: 0 20px 44px rgba(23, 36, 45, 0.15);
+}
+
+.notif-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--dashboard-panel-border);
+
+  a {
+    color: var(--brand-teal);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+}
+
+// Phones and tablets: the panel sits under the navigation bar, across the screen.
+@media (max-width: 991.98px) {
+  .notif-panel {
+    position: fixed;
+    top: 4.4rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
+  }
+}
+
+.notif-empty {
+  margin: 0;
+  padding: 1.25rem 1rem;
+  color: var(--dashboard-muted);
+  font-size: 0.88rem;
+}
+
+.notif-list {
+  max-height: min(24rem, 70vh);
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+
+  li + li {
+    border-top: 1px solid var(--dashboard-panel-border);
+  }
+}
+
+.notif-item {
+  --notif-accent: #4f8ff7;
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.2s ease;
+
+  &.is-completed { --notif-accent: #12b8a0; }
+  &.is-delivered { --notif-accent: #1f9d55; }
+  &.is-cancelled { --notif-accent: #e5484d; }
+
+  &:hover,
+  &:focus-visible {
+    background: var(--dashboard-row-bg);
+    color: inherit;
+  }
+
+  &.is-unread {
+    background: color-mix(in srgb, var(--notif-accent) 8%, transparent);
+
+    .notif-item-title::after {
+      content: '';
+      display: inline-block;
+      width: 0.45rem;
+      height: 0.45rem;
+      margin-left: 0.4rem;
+      border-radius: 50%;
+      background: var(--notif-accent);
+      vertical-align: middle;
+    }
+  }
+}
+
+.notif-item-icon {
+  display: grid;
+  flex: 0 0 2.1rem;
+  width: 2.1rem;
+  height: 2.1rem;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--notif-accent) 16%, transparent);
+  color: var(--notif-accent);
+
+  svg {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+}
+
+.notif-item-body {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.notif-item-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.notif-item-text {
+  color: var(--dashboard-muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.notif-item-time {
+  color: var(--dashboard-muted);
+  font-size: 0.72rem;
+}
+
 // Floating WhatsApp button (bottom right).
 .whatsapp-float {
   position: fixed;
