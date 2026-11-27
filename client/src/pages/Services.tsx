@@ -52,6 +52,9 @@ const TYPE_ICONS: Record<string, ReactNode> = {
   ),
 };
 
+/** "À partir de … DH" on the cards: hidden for now (prices stay editable in Gestion des services). */
+const SHOW_PRICES = false;
+
 const PROCESS = [
   { title: 'Votre demande', text: 'Un fichier STL, un croquis ou une simple idée, via le formulaire de devis.' },
   { title: 'Le devis', text: 'L’atelier étudie votre projet et vous répond sous 24 h.' },
@@ -118,13 +121,15 @@ export function Services() {
                 ))}
               </ul>
             )}
-            <footer className="service-card-foot">
-              <div>
-                <span className="service-card-from">À partir de</span>
-                <div className="service-card-price">
-                  {formatPrice(service.fromPrice, 0)} <span>/ {service.unit}</span>
+            <footer className={`service-card-foot${SHOW_PRICES ? '' : ' is-cta-only'}`}>
+              {SHOW_PRICES && (
+                <div>
+                  <span className="service-card-from">À partir de</span>
+                  <div className="service-card-price">
+                    {formatPrice(service.fromPrice, 0)} <span>/ {service.unit}</span>
+                  </div>
                 </div>
-              </div>
+              )}
               <Link to={`/contact?service=${service.id}`} className="btn btn-brand">Demander un devis</Link>
             </footer>
           </article>

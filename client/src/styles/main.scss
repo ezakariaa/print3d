@@ -1196,6 +1196,11 @@ html[data-theme='light'] .service-card:not(.is-loading) {
   border-top: 1px dashed var(--dashboard-panel-border);
 }
 
+// Without prices, the quote button takes the whole width of the card.
+.service-card-foot.is-cta-only .btn {
+  flex: 1 1 100%;
+}
+
 .service-card-from {
   color: var(--dashboard-muted);
   font-size: 0.72rem;
