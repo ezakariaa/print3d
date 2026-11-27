@@ -227,7 +227,7 @@ export function fetchUserProfile() {
 }
 
 export function saveUserProfile(profile: Omit<UserProfile, 'email'>) {
-  return authenticatedRequest<{ ok: boolean }>('/profile', {
+  return authenticatedRequest<{ ok: boolean; updatedOrders?: number }>('/profile', {
     method: 'PUT',
     body: JSON.stringify(profile),
   });

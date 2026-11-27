@@ -99,7 +99,7 @@ export function ProfileEditor({ initial, onSave: save }: {
     setError('');
     setNotice('');
     try {
-      await save({
+      const result = await save({
         firstName: profile.firstName.trim(),
         lastName: profile.lastName.trim(),
         address: profile.address.trim(),
@@ -108,7 +108,10 @@ export function ProfileEditor({ initial, onSave: save }: {
         phone: profile.phone.trim(),
       });
       setSaved(profile);
-      setNotice('Votre profil a été enregistré.');
+      const updated = (result as { updatedOrders?: number } | undefined)?.updatedOrders ?? 0;
+      setNotice(updated > 0
+        ? `Votre profil a été enregistré. ${updated} commande${updated > 1 ? 's' : ''} en cours mise${updated > 1 ? 's' : ''} à jour avec vos nouvelles coordonnées.`
+        : 'Votre profil a été enregistré.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible d’enregistrer le profil.');
     } finally {

@@ -939,11 +939,56 @@ app.put('/api/profile', async (req, res) => {
       updatedAt: FieldValue.serverTimestamp(),
     }, { merge: true });
     profilesCache.upsert(profile);
-    res.json({ ok: true });
+    const updatedOrders = await syncOpenOrdersWithProfile(user.uid, profile);
+    res.json({ ok: true, updatedOrders });
   } catch (error) {
     sendFirebaseError(res, error);
   }
 });
+
+/**
+ * Copies the new contact details onto the customer's orders still in progress (à traiter or
+ * en préparation, not delivered), so the workshop ships to the right place. Completed, delivered
+ * and cancelled orders keep the details they were invoiced with.
+ */
+async function syncOpenOrdersWithProfile(uid: string, profile: StoredProfile): Promise<number> {
+  try {
+    const snapshot = await getDb().collection('orders').where('uid', '==', uid).get();
+    const open = snapshot.docs.filter((doc) => {
+      const order = doc.data();
+      return (order.status === 'pending' || order.status === 'processing') && order.delivered !== true;
+    });
+    if (open.length === 0) return 0;
+    const name = `${profile.firstName} ${profile.lastName}`.trim();
+    const batch = getDb().batch();
+    open.forEach((doc) => batch.update(doc.ref, {
+      ...(name ? { 'customer.name': name } : {}),
+      ...(profile.phone ? { 'customer.phone': profile.phone } : {}),
+      ...(profile.address ? { 'customer.address': profile.address } : {}),
+      ...(profile.city ? { 'customer.city': profile.city } : {}),
+      updatedAt: FieldValue.serverTimestamp(),
+    }));
+    await batch.commit();
+    open.forEach((doc) => {
+      const order = doc.data();
+      ordersCache.upsert({
+        ...toStoredRecord(doc.id, order),
+        customer: {
+          ...(order.customer ?? {}),
+          ...(name ? { name } : {}),
+          ...(profile.phone ? { phone: profile.phone } : {}),
+          ...(profile.address ? { address: profile.address } : {}),
+          ...(profile.city ? { city: profile.city } : {}),
+        },
+      });
+    });
+    return open.length;
+  } catch (error) {
+    // The profile itself is saved; the orders can still be corrected by the workshop.
+    console.warn('[profile] Mise à jour des commandes en cours impossible.', error);
+    return 0;
+  }
+}
 
 // ---------- Panier lié au compte ----------
 // One Firestore document per cart line (Carts/{uid}/items/{lineId}) so that
