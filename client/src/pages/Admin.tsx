@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   deleteAdminOrder,
   deleteAdminProduct,
+  fetchAdminExpenses,
   fetchAdminOptionCategories,
   fetchAdminOrders,
   fetchAdminProducts,
@@ -19,6 +20,7 @@ import {
   updateAdminUserStatus,
   type AdminOrder,
   type AdminQuote,
+  type Expense,
   type AdminUser,
   type UserProfile,
 } from '../api/client';
@@ -42,9 +44,11 @@ import { AdminCarriers } from './AdminCarriers';
 import { AdminOptions } from './AdminOptions';
 import { AdminOrdersTable } from './AdminOrdersTable';
 import { AdminServices } from './AdminServices';
+import { AdminSales } from './AdminSales';
+import { AdminExpenses } from './AdminExpenses';
 import { ClientDashboard } from '../components/ClientDashboard';
 
-type AdminSection = 'users' | 'orders' | 'products' | 'options' | 'quotes' | 'services' | 'carriers';
+type AdminSection = 'users' | 'orders' | 'products' | 'options' | 'quotes' | 'services' | 'carriers' | 'sales' | 'expenses';
 
 // Each management card opens its own page (route), never below the cards.
 const ADMIN_SECTIONS: Record<AdminSection, { path: string; title: string; description: string }> = {
@@ -55,6 +59,8 @@ const ADMIN_SECTIONS: Record<AdminSection, { path: string; title: string; descri
   quotes: { path: '/admin/devis', title: 'Gestion des devis', description: 'Consultez les demandes de devis et les fichiers envoyés.' },
   services: { path: '/admin/services', title: 'Gestion des services', description: 'Mettez à jour les services proposés par l’atelier.' },
   carriers: { path: '/admin/livraison', title: 'Transporteurs & Livraison', description: 'Gérez les transporteurs, les frais et les zones de livraison.' },
+  sales: { path: '/admin/ventes', title: 'Ventes', description: 'Chiffre d’affaires, panier moyen, produits les plus vendus et résultat.' },
+  expenses: { path: '/admin/charges', title: 'Charges', description: 'Achats, consommables, électricité, entretien… et leur répartition.' },
 };
 
 const emptyProduct = (): Product => ({
@@ -123,6 +129,7 @@ export function Admin() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [quotes, setQuotes] = useState<AdminQuote[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [optionCategories, setOptionCategories] = useState<ProductOptionCategory[]>([]);
   const [profile, setProfile] = useState<UserProfile>(emptyProfile);
   const [draft, setDraft] = useState<Product>(emptyProduct);
@@ -230,18 +237,20 @@ export function Admin() {
 
       // 2. Admin data only for the administrator: regular users would get a 403.
       if (userProfile?.role !== 'Administrateur') return;
-      const [productList, orderList, quoteList, userList, categoryList] = await Promise.all([
+      const [productList, orderList, quoteList, userList, categoryList, expenseList] = await Promise.all([
         fetchAdminProducts(),
         fetchAdminOrders(),
         fetchAdminQuotes(),
         fetchAdminUsers(),
         fetchAdminOptionCategories(),
+        fetchAdminExpenses(),
       ]);
       setProducts(productList);
       setOrders(orderList);
       setQuotes(quoteList);
       setUsers(userList);
       setOptionCategories(categoryList);
+      setExpenses(expenseList);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de charger les données admin.');
     } finally {
@@ -623,6 +632,7 @@ export function Admin() {
           products={products}
           quotes={quotes}
           users={users}
+          expenses={expenses}
           sections={ADMIN_SECTIONS}
         />
       )}
@@ -1347,6 +1357,8 @@ export function Admin() {
       {isOptionsPage && <AdminOptions />}
       {section === 'carriers' && <AdminCarriers />}
       {section === 'services' && <AdminServices />}
+      {section === 'sales' && <AdminSales orders={orders} expenses={expenses} />}
+      {section === 'expenses' && <AdminExpenses expenses={expenses} onChange={setExpenses} />}
     </Container>
   );
 }

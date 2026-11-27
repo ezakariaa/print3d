@@ -728,6 +728,53 @@ const quotesCache = new CatalogueCache<StoredRecord>('quotes', cacheOptions, asy
   return snapshot.docs.map((doc) => toStoredRecord(doc.id, doc.data()));
 });
 
+// ---------- Charges (dépenses de l'atelier) ----------
+const EXPENSE_CATEGORIES = new Set([
+  'matieres', 'consommables', 'electricite', 'entretien', 'materiel',
+  'emballage', 'transport', 'loyer', 'telecom', 'publicite', 'autre',
+]);
+const EXPENSE_PAYMENTS = new Set(['especes', 'carte', 'virement', 'cheque', 'autre']);
+
+interface Expense {
+  id: string;
+  /** Day of the expense, YYYY-MM-DD. */
+  date: string;
+  category: string;
+  label: string;
+  amount: number;
+  paymentMethod: string;
+  note: string;
+}
+
+function parseExpense(body: unknown, id: string): Expense | null {
+  if (!body || typeof body !== 'object') return null;
+  const e = body as Record<string, unknown>;
+  const date = typeof e.date === 'string' ? e.date : '';
+  const amount = typeof e.amount === 'number' ? Math.round(e.amount * 100) / 100 : NaN;
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00Z`)) ||
+    typeof e.category !== 'string' || !EXPENSE_CATEGORIES.has(e.category) ||
+    typeof e.label !== 'string' || !e.label.trim() || e.label.length > 160 ||
+    !Number.isFinite(amount) || amount <= 0 || amount > 10_000_000 ||
+    (e.paymentMethod !== undefined && (typeof e.paymentMethod !== 'string' || !EXPENSE_PAYMENTS.has(e.paymentMethod))) ||
+    (e.note !== undefined && (typeof e.note !== 'string' || e.note.length > 1000))
+  ) return null;
+  return {
+    id,
+    date,
+    category: e.category,
+    label: e.label.trim(),
+    amount,
+    paymentMethod: (e.paymentMethod as string | undefined) ?? 'autre',
+    note: ((e.note as string | undefined) ?? '').trim(),
+  };
+}
+
+const expensesCache = new CatalogueCache<StoredRecord>('expenses', cacheOptions, async () => {
+  const snapshot = await getDb().collection('Expenses').orderBy('date', 'desc').limit(2000).get();
+  return snapshot.docs.map((doc) => toStoredRecord(doc.id, doc.data()));
+});
+
 interface StoredProfile {
   id: string;
   firstName: string;
@@ -1700,7 +1747,7 @@ app.get('/api/admin/options', async (_req, res) => {
 // path, besides the very first start, that performs collection reads.
 app.post('/api/admin/cache/refresh', async (_req, res) => {
   try {
-    const caches = { products: productsCache, services: servicesCache, options: optionsCache, carriers: carriersCache, orders: ordersCache, quotes: quotesCache, profiles: profilesCache };
+    const caches = { products: productsCache, services: servicesCache, options: optionsCache, carriers: carriersCache, orders: ordersCache, quotes: quotesCache, expenses: expensesCache, profiles: profilesCache };
     Object.values(caches).forEach((cache) => cache.reset());
     const counts = Object.fromEntries(
       await Promise.all(Object.entries(caches).map(async ([name, cache]) => [name, (await cache.list()).length])),
@@ -2026,6 +2073,69 @@ app.put('/api/admin/orders/:id', async (req, res) => {
     ordersCache.upsert(stored);
     const { id: _id, ...order } = stored;
     res.json(order);
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
+app.get('/api/admin/expenses', async (_req, res) => {
+  try {
+    const list = (await expensesCache.list())
+      .map(({ createdAt: _createdAt, updatedAt: _updatedAt, ...expense }) => expense)
+      .sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    res.json(list);
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
+app.post('/api/admin/expenses', async (req, res) => {
+  const expense = parseExpense(req.body, randomUUID());
+  if (!expense) {
+    res.status(400).json({ error: 'Charge invalide : vérifiez la date, la catégorie, le libellé et le montant.' });
+    return;
+  }
+  try {
+    const { id, ...data } = expense;
+    await getDb().collection('Expenses').doc(id).set({ ...data, createdAt: FieldValue.serverTimestamp() });
+    expensesCache.upsert({ ...expense, createdAt: new Date().toISOString() });
+    res.status(201).json(expense);
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
+app.put('/api/admin/expenses/:id', async (req, res) => {
+  const expense = parseExpense(req.body, req.params.id);
+  if (!expense) {
+    res.status(400).json({ error: 'Charge invalide : vérifiez la date, la catégorie, le libellé et le montant.' });
+    return;
+  }
+  try {
+    const ref = getDb().collection('Expenses').doc(req.params.id);
+    if (!(await ref.get()).exists) {
+      res.status(404).json({ error: 'Charge introuvable.' });
+      return;
+    }
+    const { id: _id, ...data } = expense;
+    await ref.update({ ...data, updatedAt: FieldValue.serverTimestamp() });
+    expensesCache.upsert({ ...expense, createdAt: null });
+    res.json(expense);
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
+app.delete('/api/admin/expenses/:id', async (req, res) => {
+  try {
+    const ref = getDb().collection('Expenses').doc(req.params.id);
+    if (!(await ref.get()).exists) {
+      res.status(404).json({ error: 'Charge introuvable.' });
+      return;
+    }
+    await ref.delete();
+    expensesCache.remove(ref.id);
+    res.json({ ok: true });
   } catch (error) {
     sendFirebaseError(res, error);
   }

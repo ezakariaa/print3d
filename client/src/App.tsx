@@ -39,6 +39,8 @@ export default function App() {
             <Route path="/admin/devis" element={<Admin />} />
             <Route path="/admin/services" element={<Admin />} />
             <Route path="/admin/livraison" element={<Admin />} />
+            <Route path="/admin/ventes" element={<Admin />} />
+            <Route path="/admin/charges" element={<Admin />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/mes-commandes" element={<MyOrders />} />

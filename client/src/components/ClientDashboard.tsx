@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import type { AdminOrder, AdminQuote, AdminUser, UserProfile } from '../api/client';
+import type { AdminOrder, AdminQuote, AdminUser, Expense, UserProfile } from '../api/client';
+import { inRange, isoDay, periodRange } from '../config/finance';
 import { COMPANY } from '../config/company';
 import type { Product } from '../types';
 import { formatPrice } from '../utils/formatPrice';
 
-export type DashboardSectionKey = 'users' | 'orders' | 'products' | 'options' | 'quotes' | 'services' | 'carriers';
+export type DashboardSectionKey = 'users' | 'orders' | 'products' | 'options' | 'quotes' | 'services' | 'carriers' | 'sales' | 'expenses';
 
 interface SectionInfo {
   path: string;
@@ -24,6 +25,7 @@ interface Props {
   products: Product[];
   quotes: AdminQuote[];
   users: AdminUser[];
+  expenses: Expense[];
   sections: Record<DashboardSectionKey, SectionInfo>;
 }
 
@@ -45,6 +47,8 @@ const ICONS: Record<string, ReactNode> = {
   wishlist: svg(<path d="M12 20.5s-7.5-4.6-9.3-9.4C1.4 7.6 3.6 4 7.2 4c2 0 3.6 1.1 4.8 2.8C13.2 5.1 14.8 4 16.8 4c3.6 0 5.8 3.6 4.5 7.1-1.8 4.8-9.3 9.4-9.3 9.4Z" />),
   myOrders: svg(<><path d="M6 7h12l-1 13H7L6 7Z" /><path d="M9 7a3 3 0 0 1 6 0" /><path d="m9.5 13.5 1.8 1.8 3.4-3.6" /></>),
   revenue: svg(<><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3" /></>),
+  sales: svg(<><path d="M4 19V5M4 19h16" /><path d="m7 14 4-4 3 3 5-6" /></>),
+  expenses: svg(<><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h4" /></>),
   arrow: svg(<path d="M5 12h14M13 6l6 6-6 6" />),
 };
 
@@ -57,7 +61,8 @@ const ORDER_STATUS: Record<string, { label: string; className: string }> = {
 
 /** Management areas, grouped as on the dashboard. */
 const GROUPS: Array<{ title: string; keys: DashboardSectionKey[] }> = [
-  { title: 'Ventes', keys: ['orders', 'quotes'] },
+  { title: 'Finances', keys: ['sales', 'expenses'] },
+  { title: 'Commandes et devis', keys: ['orders', 'quotes'] },
   { title: 'Catalogue', keys: ['products', 'options', 'services'] },
   { title: 'Clients et livraison', keys: ['users', 'carriers'] },
 ];
@@ -96,6 +101,7 @@ export function ClientDashboard({
   products,
   quotes,
   users,
+  expenses,
   sections,
 }: Props) {
   const pendingOrders = orders.filter((order) => order.status === 'pending').length;
@@ -106,7 +112,18 @@ export function ClientDashboard({
     .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
     .slice(0, 5);
 
+  // Current month, for the Finances cards.
+  const month = periodRange('month');
+  const monthSales = orders
+    .filter((order) => order.status !== 'cancelled' && order.createdAt && inRange(isoDay(new Date(order.createdAt)), month))
+    .reduce((sum, order) => sum + order.total, 0);
+  const monthCharges = expenses
+    .filter((expense) => inRange(expense.date, month))
+    .reduce((sum, expense) => sum + expense.amount, 0);
+
   const badges: Partial<Record<DashboardSectionKey, string>> = {
+    sales: `${formatPrice(monthSales, 0)} ce mois`,
+    expenses: `${formatPrice(monthCharges, 0)} ce mois`,
     orders: pendingOrders ? `${pendingOrders} à traiter` : undefined,
     quotes: newQuotes ? `${newQuotes} nouveau${newQuotes > 1 ? 'x' : ''}` : undefined,
     products: `${products.length}`,

@@ -417,6 +417,33 @@ export function deleteAdminOrder(orderId: string) {
   return adminRequest<{ ok: boolean }>(`/admin/orders/${encodeURIComponent(orderId)}`, { method: 'DELETE' });
 }
 
+export interface Expense {
+  id: string;
+  /** Day of the expense, YYYY-MM-DD. */
+  date: string;
+  category: string;
+  label: string;
+  amount: number;
+  paymentMethod: string;
+  note: string;
+}
+
+export function fetchAdminExpenses() {
+  return adminRequest<Expense[]>('/admin/expenses');
+}
+
+/** Creates (no id yet) or updates an expense; returns it as saved. */
+export function saveAdminExpense(expense: Expense) {
+  return adminRequest<Expense>(expense.id ? `/admin/expenses/${encodeURIComponent(expense.id)}` : '/admin/expenses', {
+    method: expense.id ? 'PUT' : 'POST',
+    body: JSON.stringify(expense),
+  });
+}
+
+export function deleteAdminExpense(id: string) {
+  return adminRequest<{ ok: boolean }>(`/admin/expenses/${encodeURIComponent(id)}`, { method: 'DELETE' });
+}
+
 export function fetchAdminQuotes() {
   return adminRequest<AdminQuote[]>('/admin/quotes');
 }
