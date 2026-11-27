@@ -411,6 +411,11 @@ a {
   --bs-btn-active-bg: #{$teal-deep};
   --bs-btn-active-border-color: #{$teal-deep};
   --bs-btn-active-color: #fff;
+  // Disabled: same teal, faded (Bootstrap would otherwise fall back to its blue).
+  --bs-btn-disabled-bg: #{$teal};
+  --bs-btn-disabled-border-color: #{$teal};
+  --bs-btn-disabled-color: #{$ink};
+  --bs-btn-disabled-opacity: 0.45;
   font-weight: 700;
   padding: 0.7rem 1.4rem;
   border-radius: 0.25rem;
@@ -1042,6 +1047,303 @@ html[data-theme='light'] .product-preview-details {
   font-weight: 700;
   color: var(--brand-teal);
   white-space: nowrap;
+}
+
+// "Mon profil": identity card with completion, form in sections, save bar.
+.profile-card {
+  position: sticky;
+  top: 5.5rem;
+  overflow: hidden;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 1.1rem;
+  background: var(--brand-ink-soft);
+}
+
+html[data-theme='light'] .profile-card,
+html[data-theme='light'] .profile-section,
+html[data-theme='light'] .profile-signed-out {
+  background: #fff;
+}
+
+.profile-card-identity {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, var(--dashboard-icon-bg), transparent 80%);
+
+  h2 {
+    margin-bottom: 0.15rem;
+    font-size: 1.2rem;
+    overflow-wrap: anywhere;
+  }
+
+  p {
+    margin-bottom: 0.4rem;
+    color: var(--dashboard-muted);
+    font-size: 0.85rem;
+    overflow-wrap: anywhere;
+  }
+}
+
+.profile-card-name {
+  min-width: 0;
+}
+
+.profile-card-avatar {
+  display: grid;
+  flex: 0 0 4rem;
+  width: 4rem;
+  height: 4rem;
+  place-items: center;
+  border: 2px solid var(--brand-teal);
+  border-radius: 50%;
+  background: var(--dashboard-icon-bg);
+  color: var(--brand-teal);
+  font-size: 1.35rem;
+  font-weight: 800;
+}
+
+.profile-completion {
+  padding: 1.1rem 1.5rem;
+  border-top: 1px solid var(--dashboard-panel-border);
+  border-bottom: 1px solid var(--dashboard-panel-border);
+}
+
+.profile-completion-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+  font-size: 0.85rem;
+
+  span {
+    color: var(--dashboard-muted);
+  }
+}
+
+.profile-completion-track {
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--dashboard-row-bg);
+
+  span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--brand-teal);
+    transition: width 0.4s ease;
+  }
+}
+
+.profile-completion-missing,
+.profile-completion-done {
+  margin: 0.6rem 0 0;
+  font-size: 0.82rem;
+}
+
+.profile-completion-missing {
+  color: var(--dashboard-muted);
+
+  a {
+    color: var(--brand-teal);
+    font-weight: 600;
+  }
+}
+
+.profile-completion-done {
+  color: #1f9d55;
+  font-weight: 600;
+}
+
+.profile-card-links {
+  display: grid;
+  margin: 0;
+  padding: 0.5rem;
+  list-style: none;
+
+  a {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 1rem;
+    border-radius: 0.6rem;
+    color: inherit;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+
+    &::after {
+      content: '›';
+      color: var(--dashboard-muted);
+      font-size: 1.2rem;
+    }
+
+    &:hover,
+    &:focus-visible {
+      background: var(--dashboard-row-bg);
+      color: var(--brand-teal);
+    }
+  }
+}
+
+.profile-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.profile-section {
+  padding: 1.4rem 1.5rem 1.5rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 1.1rem;
+  background: var(--brand-ink-soft);
+
+  .form-group,
+  [id^='profile-'] {
+    scroll-margin-top: 7rem;
+  }
+}
+
+.profile-section-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  margin-bottom: 1.1rem;
+
+  h2 {
+    margin-bottom: 0.1rem;
+    font-size: 1.1rem;
+  }
+
+  p {
+    margin: 0;
+    color: var(--dashboard-muted);
+    font-size: 0.85rem;
+  }
+}
+
+.profile-section-icon {
+  display: grid;
+  flex: 0 0 2.4rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  place-items: center;
+  border-radius: 0.7rem;
+  background: var(--dashboard-icon-bg);
+  color: var(--brand-teal);
+
+  svg {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+}
+
+// Read-only e-mail with a lock.
+.profile-locked {
+  position: relative;
+
+  .form-control {
+    padding-right: 2.5rem;
+    opacity: 0.75;
+    cursor: not-allowed;
+  }
+
+  svg {
+    position: absolute;
+    top: 50%;
+    right: 0.85rem;
+    width: 1rem;
+    height: 1rem;
+    color: var(--dashboard-muted);
+    transform: translateY(-50%);
+  }
+}
+
+// Stays pinned at the bottom of the screen only while there are unsaved changes.
+.profile-savebar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.8rem 1rem 0.8rem 1.25rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 999px;
+  background: var(--brand-ink-soft);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+
+  &.is-dirty {
+    position: sticky;
+    bottom: 1rem;
+    z-index: 5;
+    border-color: rgba(212, 167, 44, 0.6);
+
+    .profile-savebar-state {
+      color: #c99a1e;
+    }
+  }
+}
+
+html[data-theme='light'] .profile-savebar {
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(23, 36, 45, 0.08);
+}
+
+.profile-savebar-state {
+  color: var(--dashboard-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.profile-signed-out {
+  max-width: 28rem;
+  margin: 2rem auto 0;
+  padding: 2.5rem 2rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 1.25rem;
+  background: var(--brand-ink-soft);
+  text-align: center;
+}
+
+.profile-signed-out-icon {
+  display: inline-grid;
+  width: 4rem;
+  height: 4rem;
+  margin-bottom: 1rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--dashboard-icon-bg);
+  color: var(--brand-teal);
+
+  svg {
+    width: 1.9rem;
+    height: 1.9rem;
+  }
+}
+
+.dash .btn-outline-secondary,
+.profile-savebar .btn-outline-secondary {
+  border-radius: 999px;
+}
+
+@media (max-width: 991.98px) {
+  .profile-card {
+    position: static;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .profile-savebar {
+    border-radius: 1rem;
+
+    > div {
+      width: 100%;
+
+      .btn {
+        flex: 1 1 auto;
+      }
+    }
+  }
 }
 
 // Admin pages header: breadcrumb back to the Client Area, title, refresh and sign-out.
@@ -5365,7 +5667,8 @@ html:not([data-theme='light']) {
   // Secondary buttons of the windows (Annuler, Fermer, Imprimer…) and of the dashboard,
   // readable on the dark background.
   .modal .btn-outline-secondary,
-  .dash .btn-outline-secondary {
+  .dash .btn-outline-secondary,
+  .profile-savebar .btn-outline-secondary {
     --bs-btn-color: var(--brand-mist);
     --bs-btn-border-color: rgba(197, 212, 206, 0.35);
     --bs-btn-hover-color: #fff;
