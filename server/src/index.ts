@@ -806,6 +806,35 @@ const profilesCache = new CatalogueCache<StoredProfile>('profiles', cacheOptions
   return snapshot.docs.map((doc) => toStoredProfile(doc.id, doc.data(), ''));
 });
 
+/**
+ * An order placed with an account shows the account's current details (name, phone, address,
+ * city), so a profile change is seen everywhere. Empty profile fields keep the order's value.
+ */
+function withCurrentCustomer<T extends Record<string, unknown>>(order: T, profiles: Map<string, StoredProfile>): T {
+  const profile = typeof order.uid === 'string' ? profiles.get(order.uid) : undefined;
+  if (!profile) return order;
+  const customer = (order.customer ?? {}) as Record<string, unknown>;
+  const name = `${profile.firstName} ${profile.lastName}`.trim();
+  return {
+    ...order,
+    customer: {
+      ...customer,
+      ...(name ? { name } : {}),
+      ...(profile.phone ? { phone: profile.phone } : {}),
+      ...(profile.address ? { address: profile.address } : {}),
+      ...(profile.city ? { city: profile.city } : {}),
+    },
+  };
+}
+
+async function profilesById(): Promise<Map<string, StoredProfile>> {
+  try {
+    return new Map((await profilesCache.list()).map((profile) => [profile.id, profile]));
+  } catch {
+    return new Map();
+  }
+}
+
 async function listProducts(): Promise<Product[]> {
   if (!hasFirebaseProject()) return defaultProducts;
   try {
@@ -947,16 +976,15 @@ app.put('/api/profile', async (req, res) => {
 });
 
 /**
- * Copies the new contact details onto the customer's orders still in progress (à traiter or
- * en préparation, not delivered), so the workshop ships to the right place. Completed, delivered
- * and cancelled orders keep the details they were invoiced with.
+ * Copies the new contact details onto the customer's orders (all except the cancelled ones),
+ * so the workshop and the invoices always use the account's current details.
  */
 async function syncOpenOrdersWithProfile(uid: string, profile: StoredProfile): Promise<number> {
   try {
     const snapshot = await getDb().collection('orders').where('uid', '==', uid).get();
     const open = snapshot.docs.filter((doc) => {
       const order = doc.data();
-      return (order.status === 'pending' || order.status === 'processing') && order.delivered !== true;
+      return order.status !== 'cancelled';
     });
     if (open.length === 0) return 0;
     const name = `${profile.firstName} ${profile.lastName}`.trim();
@@ -985,7 +1013,7 @@ async function syncOpenOrdersWithProfile(uid: string, profile: StoredProfile): P
     return open.length;
   } catch (error) {
     // The profile itself is saved; the orders can still be corrected by the workshop.
-    console.warn('[profile] Mise à jour des commandes en cours impossible.', error);
+    console.warn('[profile] Mise à jour des commandes impossible.', error);
     return 0;
   }
 }
@@ -1140,7 +1168,11 @@ app.get('/api/my-orders', async (req, res) => {
     });
     const mine = [...found.values()];
     res.setHeader('Cache-Control', 'private, no-store');
-    res.json(newestFirst(mine).map(({ id: _id, uid: _uid, ...order }) => order));
+    const profiles = await profilesById();
+    res.json(newestFirst(mine).map((order) => {
+      const { id: _id, uid: _uid, ...rest } = withCurrentCustomer(order, profiles);
+      return rest;
+    }));
   } catch (error) {
     sendFirebaseError(res, error);
   }
@@ -2026,7 +2058,8 @@ app.delete('/api/admin/carriers/:id', async (req, res) => {
 
 app.get('/api/admin/orders', async (_req, res) => {
   try {
-    res.json(newestFirst(await ordersCache.list()).map(({ id: _id, ...order }) => order));
+    const profiles = await profilesById();
+    res.json(newestFirst(await ordersCache.list()).map(({ id: _id, ...order }) => withCurrentCustomer(order, profiles)));
   } catch (error) {
     sendFirebaseError(res, error);
   }

@@ -110,7 +110,7 @@ export function ProfileEditor({ initial, onSave: save }: {
       setSaved(profile);
       const updated = (result as { updatedOrders?: number } | undefined)?.updatedOrders ?? 0;
       setNotice(updated > 0
-        ? `Votre profil a été enregistré. ${updated} commande${updated > 1 ? 's' : ''} en cours mise${updated > 1 ? 's' : ''} à jour avec vos nouvelles coordonnées.`
+        ? `Votre profil a été enregistré. ${updated} commande${updated > 1 ? 's' : ''} mise${updated > 1 ? 's' : ''} à jour avec vos nouvelles coordonnées.`
         : 'Votre profil a été enregistré.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible d’enregistrer le profil.');
