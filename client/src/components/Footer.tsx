@@ -1,7 +1,6 @@
 import { Col, Container, Row } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { COMPANY } from '../config/company';
-import { WhatsAppIcon } from './WhatsAppButton';
 
 const EXPLORE = [
   { to: '/boutique', label: 'Boutique' },
@@ -46,16 +45,6 @@ export function Footer() {
             <p className="footer-about">
               Atelier d’impression 3D : services sur devis, objets prêts à l’emploi et pièces à personnaliser.
             </p>
-            <div className="footer-payments" aria-label="Moyens de paiement">
-              <span>Paiement à la livraison</span>
-              <span>Virement bancaire</span>
-            </div>
-            {whatsapp && (
-              <a className="footer-whatsapp" href={whatsapp} target="_blank" rel="noopener noreferrer">
-                <WhatsAppIcon />
-                Discuter sur WhatsApp
-              </a>
-            )}
           </Col>
 
           <Col xs={6} md={4} lg={2}>

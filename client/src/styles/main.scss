@@ -4341,43 +4341,6 @@ html:not([data-theme='light']) {
   line-height: 1.6;
 }
 
-.footer-payments {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-  margin-bottom: 1.1rem;
-
-  span {
-    padding: 0.2rem 0.65rem;
-    border: 1px solid var(--dashboard-panel-border);
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-  }
-}
-
-.site-footer .footer-whatsapp {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  background: #25d366;
-  color: #fff;
-  font-weight: 700;
-
-  svg {
-    width: 1.15rem;
-    height: 1.15rem;
-  }
-
-  &:hover,
-  &:focus-visible {
-    background: #1ebe5b;
-    color: #fff;
-  }
-}
-
 .footer-title {
   margin-bottom: 1rem;
   color: var(--brand-teal);
