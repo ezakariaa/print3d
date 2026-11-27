@@ -1049,6 +1049,271 @@ html[data-theme='light'] .product-preview-details {
   white-space: nowrap;
 }
 
+// "Transporteurs & Livraison": city tester, one card per carrier with its zones.
+.car-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.car-check {
+  position: relative;
+  flex: 1 1 18rem;
+
+  svg {
+    position: absolute;
+    top: 50%;
+    left: 0.85rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    color: var(--brand-teal);
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  .form-control {
+    padding-left: 2.5rem;
+    border-radius: 999px;
+  }
+}
+
+.car-test {
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--brand-teal);
+  border-radius: 1rem;
+  background: var(--dashboard-icon-bg);
+
+  ul {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+    gap: 0.5rem;
+    margin: 0.6rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.55rem 0.8rem;
+    border-radius: 0.6rem;
+    background: var(--brand-ink-soft);
+    font-size: 0.88rem;
+
+    strong {
+      color: var(--brand-teal);
+      white-space: nowrap;
+    }
+
+    small {
+      color: var(--dashboard-muted);
+    }
+
+    &.is-none strong {
+      color: #e5484d;
+    }
+  }
+}
+
+html[data-theme='light'] .car-test li,
+html[data-theme='light'] .car-card {
+  background: #fff;
+}
+
+.car-test-title {
+  font-size: 0.9rem;
+}
+
+.car-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.car-card {
+  padding: 1.25rem 1.4rem 1.1rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 1.1rem;
+  background: var(--brand-ink-soft);
+  transition: opacity 0.2s ease;
+
+  &.is-inactive {
+    opacity: 0.6;
+
+    .car-icon {
+      background: var(--dashboard-row-bg);
+      color: var(--dashboard-muted);
+    }
+  }
+}
+
+.car-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+
+.car-icon {
+  display: grid;
+  flex: 0 0 2.75rem;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border-radius: 0.8rem;
+  background: var(--dashboard-icon-bg);
+  color: var(--brand-teal);
+
+  svg {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+}
+
+.car-title {
+  flex: 1 1 auto;
+  min-width: 0;
+
+  h3 {
+    margin-bottom: 0.15rem;
+    font-family: inherit;
+    font-size: 1.15rem;
+    font-weight: 800;
+  }
+
+  p {
+    display: -webkit-box;
+    margin: 0;
+    overflow: hidden;
+    color: var(--dashboard-muted);
+    font-size: 0.82rem;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+}
+
+.car-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.form-check.car-switch {
+  margin: 0 0.5rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+
+  .form-check-input:checked {
+    border-color: #1f9d55;
+    background-color: #1f9d55;
+  }
+}
+
+.car-facts {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 1rem 0;
+  padding: 0.75rem 0;
+  border-block: 1px solid var(--dashboard-panel-border);
+
+  dt {
+    color: var(--dashboard-muted);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  dd {
+    margin: 0.1rem 0 0;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+}
+
+.car-warning {
+  margin: 0;
+  color: #c99a1e;
+  font-size: 0.88rem;
+}
+
+.car-zones {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.car-zone-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.car-zone-price {
+  min-width: 4.5rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: var(--brand-teal);
+  color: #071018;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.car-zone-meta {
+  color: var(--dashboard-muted);
+  font-size: 0.8rem;
+}
+
+.car-cities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+
+  span {
+    padding: 0.1rem 0.5rem;
+    border: 1px solid var(--dashboard-panel-border);
+    border-radius: 999px;
+    font-size: 0.76rem;
+
+    &.is-more {
+      border-style: dashed;
+      color: var(--dashboard-muted);
+    }
+  }
+}
+
+.car-expand {
+  margin-top: 0.8rem;
+}
+
+@media (max-width: 767.98px) {
+  .car-head {
+    flex-wrap: wrap;
+  }
+
+  .car-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .car-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 0.75rem;
+
+    dd {
+      white-space: normal;
+    }
+  }
+}
+
 // "Mon profil": identity card with completion, form in sections, save bar.
 .profile-card {
   position: sticky;

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Alert, Button, Col, Form, Modal, Row, Table } from 'react-bootstrap';
+import { Alert, Button, Col, Form, Modal, Row } from 'react-bootstrap';
 import {
   deleteAdminCarrier,
   fetchAdminCarriers,
@@ -8,6 +8,7 @@ import {
   type CarrierZone,
 } from '../api/client';
 import { formatPrice } from '../utils/formatPrice';
+import { shippingQuote } from '../utils/shipping';
 import { slugify } from '../utils/slugify';
 
 /** Zone being edited: the cities are kept as free text ("Rabat, Salé, Témara"). */
@@ -64,7 +65,12 @@ function countCities(carrier: Carrier) {
   return carrier.zones.reduce((sum, zone) => sum + zone.cities.length, 0);
 }
 
-export function AdminCarriers() {
+export function AdminCarriers({
+  fetchCarriers = fetchAdminCarriers,
+}: {
+  /** Where the list comes from (the admin API by default). */
+  fetchCarriers?: () => Promise<Carrier[]>;
+} = {}) {
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [draft, setDraft] = useState<CarrierDraft>(emptyCarrier);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -74,6 +80,7 @@ export function AdminCarriers() {
   const [notice, setNotice] = useState('');
   const [zoneFilter, setZoneFilter] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [testCity, setTestCity] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [formError, setFormError] = useState('');
   const [formInfo, setFormInfo] = useState('');
@@ -82,11 +89,15 @@ export function AdminCarriers() {
     ? draft.zones.filter((zone) => zone.citiesText.toLowerCase().includes(filterTerm))
     : draft.zones;
 
+  // Every city served, for the "Tester une ville" suggestions.
+  const allCities = [...new Set(carriers.flatMap((carrier) => carrier.zones.flatMap((zone) => zone.cities)))]
+    .sort((a, b) => a.localeCompare(b, 'fr'));
+
   const load = async () => {
     setLoading(true);
     setError('');
     try {
-      setCarriers(await fetchAdminCarriers());
+      setCarriers(await fetchCarriers());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de charger les transporteurs.');
     } finally {
@@ -229,104 +240,163 @@ export function AdminCarriers() {
     <>
       {error && <Alert variant="warning" dismissible onClose={() => setError('')}>{error}</Alert>}
       {notice && <Alert className="alert-soft" dismissible onClose={() => setNotice('')}>{notice}</Alert>}
-      <Row className="g-4">
-        <Col xs={12}>
-          <div className="custom-panel">
-            <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap mb-2">
-              <h2 className="h5 mb-0">Transporteurs enregistrés</h2>
-              <Button className="btn-brand" onClick={openNew}>+ Nouveau transporteur</Button>
-            </div>
-            {loading && <p className="text-secondary mb-0">Chargement…</p>}
-            {!loading && carriers.length === 0 && (
-              <p className="text-secondary mb-0">Aucun transporteur pour le moment. Cliquez sur « Nouveau transporteur » pour en ajouter un.</p>
-            )}
-            {carriers.length > 0 && (
-              <div className="table-responsive">
-                <Table hover className="align-top mb-0 admin-product-table carriers-table">
-                  <thead>
-                    <tr>
-                      <th style={{ minWidth: '12rem' }}>Transporteur</th>
-                      <th style={{ minWidth: '24rem' }}>Zones et prix</th>
-                      <th>Livraison gratuite</th>
-                      <th>Statut</th>
-                      <th className="text-end">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {carriers.map((carrier) => {
-                      const expanded = expandedId === carrier.id;
-                      return (
-                        <tr key={carrier.id}>
-                          <td>
-                            <strong>{carrier.name}</strong>
-                            <div className="small text-secondary">
-                              {carrier.zones.length} zone{carrier.zones.length > 1 ? 's' : ''} · {countCities(carrier)} villes
-                              {carrier.delay && <> · délai {carrier.delay}</>}
-                            </div>
-                            {carrier.description && <div className="small text-secondary mt-1">{carrier.description}</div>}
-                          </td>
-                          <td>
-                            {carrier.zones.length === 0 ? (
-                              <span className="small text-warning">Aucune zone : ce transporteur ne peut pas être proposé.</span>
-                            ) : (
-                              <>
-                                <div className="d-grid gap-1">
-                                  {carrier.zones.map((zone) => {
-                                    const preview = zone.cities.slice(0, 5).join(', ');
-                                    const more = zone.cities.length - 5;
-                                    return (
-                                      <div key={zone.id} className="small">
-                                        <span className="fw-semibold">{priceLabel(zone.price)}</span>
-                                        <span className="text-secondary">
-                                          {' '}· {zone.delay || carrier.delay || 'délai non précisé'}
-                                          {' '}· {zone.cities.length} ville{zone.cities.length > 1 ? 's' : ''} :{' '}
-                                        </span>
-                                        {expanded ? zone.cities.join(', ') : preview}
-                                        {!expanded && more > 0 && <span className="text-secondary"> … +{more}</span>}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                                {carrier.zones.some((zone) => zone.cities.length > 5) && (
-                                  <Button
-                                    size="sm"
-                                    variant="link"
-                                    className="p-0 mt-1"
-                                    onClick={() => setExpandedId(expanded ? null : carrier.id)}
-                                  >
-                                    {expanded ? 'Réduire' : 'Voir toutes les villes'}
-                                  </Button>
-                                )}
-                              </>
-                            )}
-                          </td>
-                          <td className="small">
-                            {carrier.freeFrom !== null ? `Dès ${formatPrice(carrier.freeFrom, 0)}` : '—'}
-                          </td>
-                          <td>
-                            <span className={`badge ${carrier.active ? 'bg-success' : 'bg-secondary'}`}>
-                              {carrier.active ? 'Actif' : 'Inactif'}
-                            </span>
-                          </td>
-                          <td className="text-end">
-                            <div className="d-inline-flex gap-2 flex-wrap justify-content-end">
-                              <Button size="sm" variant="outline-secondary" onClick={() => void onToggle(carrier)}>
-                                {carrier.active ? 'Désactiver' : 'Activer'}
-                              </Button>
-                              <Button size="sm" variant="outline-secondary" onClick={() => onEdit(carrier)}>Modifier</Button>
-                              <Button size="sm" variant="outline-danger" onClick={() => void onDelete(carrier)}>Supprimer</Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </Table>
-              </div>
-            )}
-          </div>
-        </Col>
-      </Row>
+      <div className="car-toolbar">
+        <div className="car-check">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z" />
+            <circle cx="12" cy="9.5" r="2.5" />
+          </svg>
+          <Form.Control
+            type="search"
+            list="carrier-cities"
+            placeholder="Tester une ville : prix et délai par transporteur…"
+            aria-label="Tester une ville"
+            value={testCity}
+            onChange={(event) => setTestCity(event.target.value)}
+          />
+          <datalist id="carrier-cities">
+            {allCities.map((city) => <option key={city} value={city} />)}
+          </datalist>
+        </div>
+        <button
+          type="button"
+          className={`admin-header-btn${loading ? ' is-loading' : ''}`}
+          onClick={() => void load()}
+          disabled={loading}
+          title="Actualiser les transporteurs"
+          aria-label="Actualiser les transporteurs"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+            <path d="M21 4v5h-5" />
+          </svg>
+        </button>
+        <Button className="btn-brand" onClick={openNew}>+ Nouveau transporteur</Button>
+      </div>
+
+      {testCity.trim() && carriers.length > 0 && (
+        <div className="car-test" aria-live="polite">
+          <span className="car-test-title">Livraison à <strong>{testCity.trim()}</strong></span>
+          <ul>
+            {carriers.map((carrier) => {
+              const quote = shippingQuote(carrier, testCity, 0);
+              return (
+                <li key={carrier.id} className={quote ? '' : 'is-none'}>
+                  <span>{carrier.name}{!carrier.active && <small> (inactif)</small>}</span>
+                  <strong>{quote ? `${priceLabel(quote.price)}${quote.delay ? ` · ${quote.delay}` : ''}` : 'Non desservie'}</strong>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {loading && carriers.length === 0 && <p className="text-secondary">Chargement…</p>}
+      {!loading && carriers.length === 0 && (
+        <div className="custom-panel text-secondary text-center py-5">
+          Aucun transporteur pour le moment. Cliquez sur « Nouveau transporteur » pour en ajouter un.
+        </div>
+      )}
+
+      <div className="car-list">
+        {carriers.map((carrier) => {
+          const expanded = expandedId === carrier.id;
+          const prices = carrier.zones.map((zone) => zone.price);
+          const minPrice = prices.length ? Math.min(...prices) : 0;
+          const maxPrice = prices.length ? Math.max(...prices) : 0;
+          return (
+            <article className={`car-card${carrier.active ? '' : ' is-inactive'}`} key={carrier.id}>
+              <header className="car-head">
+                <span className="car-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M2 6h11v10H2zM13 9h4l4 4v3h-8" />
+                    <circle cx="6" cy="18" r="2" />
+                    <circle cx="17" cy="18" r="2" />
+                  </svg>
+                </span>
+                <div className="car-title">
+                  <h3>{carrier.name}</h3>
+                  {carrier.description && <p>{carrier.description}</p>}
+                </div>
+                <div className="car-actions">
+                  <Form.Check
+                    type="switch"
+                    id={`carrier-active-${carrier.id}`}
+                    className="car-switch"
+                    label={carrier.active ? 'Actif' : 'Inactif'}
+                    checked={carrier.active}
+                    onChange={() => void onToggle(carrier)}
+                  />
+                  <Button
+                    variant="link"
+                    className="admin-icon-btn"
+                    title="Modifier"
+                    aria-label={`Modifier ${carrier.name}`}
+                    onClick={() => onEdit(carrier)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                  </Button>
+                  <Button
+                    variant="link"
+                    className="admin-icon-btn admin-icon-btn-danger"
+                    title="Supprimer"
+                    aria-label={`Supprimer ${carrier.name}`}
+                    onClick={() => void onDelete(carrier)}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M3 6h18" />
+                      <path d="M8 6V4h8v2" />
+                      <path d="M19 6l-1 14H6L5 6" />
+                      <path d="M10 11v6M14 11v6" />
+                    </svg>
+                  </Button>
+                </div>
+              </header>
+
+              <dl className="car-facts">
+                <div><dt>Tarifs</dt><dd>{carrier.zones.length ? (minPrice === maxPrice ? priceLabel(minPrice) : `${formatPrice(minPrice, 0)} – ${formatPrice(maxPrice, 0)}`) : '—'}</dd></div>
+                <div><dt>Zones</dt><dd>{carrier.zones.length}</dd></div>
+                <div><dt>Villes</dt><dd>{countCities(carrier)}</dd></div>
+                <div><dt>Délai</dt><dd>{carrier.delay || '—'}</dd></div>
+                <div><dt>Gratuite dès</dt><dd>{carrier.freeFrom !== null ? formatPrice(carrier.freeFrom, 0) : '—'}</dd></div>
+              </dl>
+
+              {carrier.zones.length === 0 ? (
+                <p className="car-warning">Aucune zone : ce transporteur ne peut pas être proposé aux clients.</p>
+              ) : (
+                <ul className="car-zones">
+                  {[...carrier.zones].sort((a, b) => a.price - b.price).map((zone) => {
+                    const shown = expanded ? zone.cities : zone.cities.slice(0, 8);
+                    const more = zone.cities.length - shown.length;
+                    return (
+                      <li key={zone.id} className="car-zone">
+                        <div className="car-zone-head">
+                          <span className="car-zone-price">{priceLabel(zone.price)}</span>
+                          <span className="car-zone-meta">
+                            {zone.delay || carrier.delay || 'délai non précisé'} · {zone.cities.length} ville{zone.cities.length > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                        <div className="car-cities">
+                          {shown.map((city) => <span key={city}>{city}</span>)}
+                          {more > 0 && <span className="is-more">+{more}</span>}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              {carrier.zones.some((zone) => zone.cities.length > 8) && (
+                <button type="button" className="shop-reset car-expand" onClick={() => setExpandedId(expanded ? null : carrier.id)}>
+                  {expanded ? 'Réduire' : 'Voir toutes les villes'}
+                </button>
+              )}
+            </article>
+          );
+        })}
+      </div>
       <Modal show={showModal} onHide={closeModal} size="lg" centered scrollable backdrop="static">
         {/* display: contents keeps header/body/footer as direct children so the body scrolls. */}
         <Form onSubmit={onSave} style={{ display: 'contents' }}>
