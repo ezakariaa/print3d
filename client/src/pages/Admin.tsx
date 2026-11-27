@@ -576,8 +576,20 @@ export function Admin() {
 
   return (
     <Container className="page-hero pb-5">
-      <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-4">
-        <div>
+      <header className="admin-header">
+        <div className="admin-header-text">
+          {isManagementPage && (
+            <nav className="admin-breadcrumb" aria-label="Fil d’Ariane">
+              <Link to="/admin">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+                Espace {isAdmin ? 'administrateur' : 'client'}
+              </Link>
+              <span aria-hidden="true">/</span>
+              <span aria-current="page">{section ? ADMIN_SECTIONS[section].title : ''}</span>
+            </nav>
+          )}
           <h1 className="mb-1">
             {section
               ? ADMIN_SECTIONS[section].title
@@ -593,47 +605,33 @@ export function Admin() {
                 : 'Consultez et gérez vos informations personnelles.'}
           </p>
         </div>
-        <div className="d-flex align-items-center gap-2 ms-auto">
-          {isManagementPage && (
-            <Button
-              variant="outline-secondary"
-              className="d-inline-flex align-items-center gap-2"
-              onClick={() => navigate('/admin')}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <line x1="19" y1="12" x2="5" y2="12" />
-                <polyline points="12 19 5 12 12 5" />
-              </svg>
-              Retour à l’espace client
-            </Button>
-          )}
-          <Button
-            variant="outline-secondary"
-            className="d-inline-flex align-items-center gap-2"
+        <div className="admin-header-actions">
+          {/* Options, services and carriers load their own data (and have their own refresh). */}
+          {!(section === 'options' || section === 'services' || section === 'carriers') && (
+          <button
+            type="button"
+            className={`admin-header-btn${loading ? ' is-loading' : ''}`}
             onClick={() => void loadData()}
             disabled={loading}
+            title="Actualiser les données"
+            aria-label="Actualiser les données"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M23 4v6h-6" />
-              <path d="M1 20v-6h6" />
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+              <path d="M21 4v5h-5" />
             </svg>
-            Actualiser
-          </Button>
-          <Button
-            variant="outline-danger"
-            className="d-inline-flex align-items-center gap-2 fw-semibold"
-            onClick={onLogout}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          </button>
+          )}
+          <button type="button" className="admin-header-btn is-logout" onClick={onLogout}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
               <polyline points="16 17 21 12 16 7" />
               <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
-            Se déconnecter
-          </Button>
+            <span>Déconnexion</span>
+          </button>
         </div>
-      </div>
+      </header>
       {error && !showProductModal && (
         <Alert variant="warning" dismissible onClose={() => setError('')}>{error}</Alert>
       )}

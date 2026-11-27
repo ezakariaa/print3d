@@ -1044,6 +1044,304 @@ html[data-theme='light'] .product-preview-details {
   white-space: nowrap;
 }
 
+// Admin pages header: breadcrumb back to the Client Area, title, refresh and sign-out.
+.admin-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.admin-header-text {
+  min-width: 0;
+}
+
+.admin-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.6rem;
+  color: var(--dashboard-muted);
+  font-size: 0.85rem;
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.65rem 0.2rem 0.4rem;
+    border: 1px solid var(--dashboard-panel-border);
+    border-radius: 999px;
+    color: var(--brand-teal);
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+
+    svg {
+      width: 1rem;
+      height: 1rem;
+    }
+
+    &:hover,
+    &:focus-visible {
+      border-color: var(--brand-teal);
+      background: var(--dashboard-icon-bg);
+    }
+  }
+}
+
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+// Round icon button (refresh) and discreet sign-out pill.
+.admin-header-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-width: 2.6rem;
+  height: 2.6rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 999px;
+  background: var(--brand-ink-soft);
+  color: var(--dashboard-muted);
+  font-size: 0.88rem;
+  font-weight: 600;
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+
+  svg {
+    flex: 0 0 auto;
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  &:hover:not(:disabled),
+  &:focus-visible {
+    border-color: var(--brand-teal);
+    color: var(--brand-teal);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+  }
+
+  &.is-loading svg {
+    animation: admin-spin 0.9s linear infinite;
+  }
+
+  &.is-logout {
+    padding: 0 1rem 0 0.85rem;
+
+    &:hover,
+    &:focus-visible {
+      border-color: #e5484d;
+      background: rgba(229, 72, 77, 0.1);
+      color: #e5484d;
+    }
+  }
+}
+
+html[data-theme='light'] .admin-header-btn {
+  background: #fff;
+}
+
+@keyframes admin-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-header-btn.is-loading svg {
+    animation: none;
+  }
+}
+
+// "Gestion des options": filters, one card per option category.
+.opt-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.opt-search {
+  flex: 1 1 14rem;
+}
+
+.opt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 26rem), 1fr));
+  gap: 1rem;
+}
+
+.opt-card {
+  --opt-accent: #12b8a0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 1rem;
+  background: var(--brand-ink-soft);
+  transition: border-color 0.2s ease;
+
+  &.is-text { --opt-accent: #4f8ff7; }
+  &.is-image { --opt-accent: #8b5cf6; }
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--opt-accent) 60%, transparent);
+  }
+}
+
+html[data-theme='light'] .opt-card {
+  background: #fff;
+}
+
+.opt-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 1rem 1rem 0.85rem 1.1rem;
+  border-bottom: 1px solid var(--dashboard-panel-border);
+}
+
+.opt-card-icon {
+  display: grid;
+  flex: 0 0 2.6rem;
+  width: 2.6rem;
+  height: 2.6rem;
+  place-items: center;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--opt-accent) 15%, transparent);
+  color: var(--opt-accent);
+
+  svg {
+    width: 1.3rem;
+    height: 1.3rem;
+  }
+}
+
+.opt-card-titles {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.opt-card-title {
+  margin-bottom: 0.35rem;
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.opt-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.opt-badge {
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--opt-accent) 14%, transparent);
+  color: var(--opt-accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+
+  &.is-muted {
+    background: var(--dashboard-row-bg);
+    color: var(--dashboard-muted);
+  }
+
+  &.is-price {
+    background: rgba(212, 167, 44, 0.16);
+    color: #c99a1e;
+  }
+}
+
+.opt-card-actions {
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.opt-card-body {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.9rem 1.1rem 1.1rem;
+}
+
+.opt-targets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.opt-label {
+  margin-right: 0.2rem;
+  color: var(--dashboard-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.opt-target {
+  padding: 0.1rem 0.55rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 600;
+}
+
+.opt-note {
+  margin: 0;
+  color: var(--dashboard-muted);
+  font-size: 0.88rem;
+  font-style: italic;
+}
+
+.opt-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.opt-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0.65rem 0.25rem 0.3rem;
+  border: 1px solid var(--dashboard-panel-border);
+  border-radius: 999px;
+  background: var(--dashboard-row-bg);
+  font-size: 0.82rem;
+
+  img {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  &:not(:has(img)) {
+    padding-left: 0.65rem;
+  }
+}
+
+.opt-value-price {
+  color: #c99a1e;
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
 // Finances (Ventes, Charges). Series colours validated for colour blindness on both themes:
 // sales #0d9488, expenses #d97706.
 .finance {

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
+import React, { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Alert, Button, Form, InputGroup, Modal } from 'react-bootstrap';
 import {
   deleteAdminOptionCategory,
@@ -28,6 +28,29 @@ const productCategoryOptions: Array<{ value: ProductCategory; label: string }> =
   { value: 'ready', label: 'Prêt à commander' },
   { value: 'customizable', label: 'À personnaliser' },
 ];
+
+const TYPE_LABELS: Record<ProductOptionType, string> = {
+  values: 'Liste de valeurs',
+  text: 'Champ de texte',
+  image: 'Images',
+};
+
+const TYPE_FILTERS: Array<{ value: 'all' | ProductOptionType; label: string }> = [
+  { value: 'all', label: 'Toutes' },
+  { value: 'values', label: 'Listes' },
+  { value: 'text', label: 'Texte' },
+  { value: 'image', label: 'Images' },
+];
+
+const typeIcon = (children: React.ReactNode) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{children}</svg>
+);
+
+const TYPE_ICONS: Record<ProductOptionType, React.ReactNode> = {
+  values: typeIcon(<><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4.5" cy="6" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="18" r="1" /></>),
+  text: typeIcon(<><path d="M4 7V5h16v2M12 5v14M9 19h6" /></>),
+  image: typeIcon(<><rect x="3" y="4" width="18" height="16" rx="2.5" /><circle cx="9" cy="10" r="1.6" /><path d="m21 16-4.5-4.5L8 20" /></>),
+};
 
 interface OptionImagePickerProps {
   imageUrl?: string;
@@ -97,7 +120,12 @@ function OptionImagePicker({ imageUrl, file, label, onSelect, onRemove }: Option
   );
 }
 
-export function AdminOptions() {
+export function AdminOptions({
+  fetchCategories = fetchAdminOptionCategories,
+}: {
+  /** Where the list comes from (the admin API by default). */
+  fetchCategories?: () => Promise<ProductOptionCategory[]>;
+} = {}) {
   const [categories, setCategories] = useState<ProductOptionCategory[]>([]);
   const [draft, setDraft] = useState<ProductOptionCategory>(emptyCategory);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -106,15 +134,25 @@ export function AdminOptions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | ProductOptionType>('all');
+  const [search, setSearch] = useState('');
   const optionType: ProductOptionType = draft.type ?? 'values';
   const showValues = optionType === 'values';
   const isImageType = optionType === 'image';
+
+  const visibleCategories = categories.filter((category) => {
+    const term = search.trim().toLowerCase();
+    const matchesType = typeFilter === 'all' || (category.type ?? 'values') === typeFilter;
+    const matchesSearch = !term || category.title.toLowerCase().includes(term) ||
+      category.values.some((value) => value.label.toLowerCase().includes(term));
+    return matchesType && matchesSearch;
+  });
 
   const loadCategories = async () => {
     setLoading(true);
     setError('');
     try {
-      setCategories(await fetchAdminOptionCategories());
+      setCategories(await fetchCategories());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de charger les catégories d’options.');
     } finally {
@@ -123,7 +161,7 @@ export function AdminOptions() {
   };
 
   useEffect(() => {
-    fetchAdminOptionCategories()
+    fetchCategories()
       .then(setCategories)
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : 'Impossible de charger les catégories d’options.');
@@ -269,110 +307,159 @@ export function AdminOptions() {
 
   return (
     <div className="admin-options">
-      <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
-        <h2 className="h4 mb-0">Catalogue des options</h2>
-        <div className="d-flex gap-2">
-          <Button variant="outline-light" onClick={() => void loadCategories()} disabled={loading}>
-            Actualiser
-          </Button>
-          <Button className="btn-brand" onClick={openNewCategory}>Ajouter une catégorie</Button>
+      <div className="opt-toolbar">
+        <div className="featured-tabs" role="tablist" aria-label="Type d’option">
+          {TYPE_FILTERS.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              role="tab"
+              aria-selected={typeFilter === filter.value}
+              className={`featured-tab${typeFilter === filter.value ? ' is-active' : ''}`}
+              onClick={() => setTypeFilter(filter.value)}
+            >
+              {filter.label}
+              <span className="featured-tab-count">
+                {filter.value === 'all' ? categories.length : categories.filter((c) => (c.type ?? 'values') === filter.value).length}
+              </span>
+            </button>
+          ))}
         </div>
+        <div className="shop-search opt-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
+          <Form.Control
+            type="search"
+            placeholder="Rechercher une option ou une valeur…"
+            aria-label="Rechercher une option"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        </div>
+        <button
+          type="button"
+          className={`admin-header-btn${loading ? ' is-loading' : ''}`}
+          onClick={() => void loadCategories()}
+          disabled={loading}
+          title="Actualiser les options"
+          aria-label="Actualiser les options"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+            <path d="M21 4v5h-5" />
+          </svg>
+        </button>
+        <Button className="btn-brand" onClick={openNewCategory}>+ Ajouter une catégorie</Button>
       </div>
+
       {error && !showModal && (
         <Alert variant="warning" dismissible onClose={() => setError('')}>{error}</Alert>
       )}
       {notice && (
         <Alert className="alert-soft" dismissible onClose={() => setNotice('')}>{notice}</Alert>
       )}
+
       {loading && categories.length === 0 ? (
         <p className="text-secondary">Chargement des catégories…</p>
-      ) : categories.length === 0 ? (
-        <div className="custom-panel text-secondary">Aucune catégorie d’options enregistrée.</div>
+      ) : visibleCategories.length === 0 ? (
+        <div className="custom-panel text-secondary text-center py-5">
+          {categories.length === 0 ? 'Aucune catégorie d’options enregistrée.' : 'Aucune option ne correspond à ces critères.'}
+        </div>
       ) : (
-        <div className="option-category-list">
-          {categories.map((category) => {
-            const typeLabel =
-              category.type === 'text'
-                ? 'Champ de texte'
-                : category.type === 'image'
-                  ? 'Images'
-                  : 'Liste de valeurs';
+        <div className="opt-grid">
+          {visibleCategories.map((category) => {
+            const type = category.type ?? 'values';
             const targets = category.productCategories ?? ['ready', 'customizable'];
-            const targetLabels = targets.map((t) => (t === 'ready' ? 'Prêt à commander' : 'À personnaliser'));
             return (
-            <article className="custom-panel option-category-row" key={category.id}>
-              <div className="option-category-info">
-                <h3 className="h5 option-category-title mb-1">{category.title}</h3>
-                <div className="d-flex flex-wrap gap-2 small text-secondary">
-                  <span className="badge bg-secondary bg-opacity-15 text-body">{typeLabel}</span>
-                  <span>{targetLabels.join(' · ')}</span>
-                </div>
-              </div>
-              <div className="option-values-list">
-                {category.type === 'text' ? (
-                  <div className="option-value-card">Champ de texte libre</div>
-                ) : category.type === 'image' ? (
-                  <div className="option-value-card text-secondary">Images (choix et téléversement)</div>
-                ) : (
-                  category.values.map((value) => (
-                    <div className="option-value-card" key={value.id}>
-                      {value.imageUrl && <img src={value.imageUrl} alt="" />}
-                      <span>{value.label}</span>
-                      {category.pricedValues && value.price ? (
-                        <span className="option-value-extra">+{formatPrice(value.price)}</span>
-                      ) : null}
+              <article className={`opt-card is-${type}`} key={category.id}>
+                <header className="opt-card-head">
+                  <span className="opt-card-icon" aria-hidden="true">{TYPE_ICONS[type]}</span>
+                  <div className="opt-card-titles">
+                    <h3 className="opt-card-title">{category.title}</h3>
+                    <div className="opt-card-badges">
+                      <span className="opt-badge">{TYPE_LABELS[type]}</span>
+                      {type === 'values' && (
+                        <span className="opt-badge is-muted">{category.values.length} valeur{category.values.length > 1 ? 's' : ''}</span>
+                      )}
+                      {category.pricedValues && <span className="opt-badge is-price">Prix supplémentaire</span>}
                     </div>
-                  ))
-                )}
-              </div>
-              <div className="option-category-actions">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="link"
-                  className="admin-icon-btn"
-                  title="Modifier"
-                  aria-label={`Modifier la catégorie ${category.title}`}
-                  onClick={() => openEditCategory(category)}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M12 20h9" />
-                    <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
-                  </svg>
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="link"
-                  className="admin-icon-btn"
-                  title="Dupliquer"
-                  aria-label={`Dupliquer la catégorie ${category.title}`}
-                  onClick={() => void onDuplicateCategory(category)}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                  </svg>
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="link"
-                  className="admin-icon-btn admin-icon-btn-danger"
-                  title="Supprimer"
-                  aria-label={`Supprimer la catégorie ${category.title}`}
-                  onClick={() => void onDeleteCategory(category)}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M3 6h18" />
-                    <path d="M8 6V4h8v2" />
-                    <path d="M19 6l-1 14H6L5 6" />
-                    <path d="M10 11v6M14 11v6" />
-                  </svg>
-                </Button>
-              </div>
-            </article>
-          );})}
+                  </div>
+                  <div className="opt-card-actions">
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="admin-icon-btn"
+                      title="Modifier"
+                      aria-label={`Modifier la catégorie ${category.title}`}
+                      onClick={() => openEditCategory(category)}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M12 20h9" />
+                        <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+                      </svg>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="admin-icon-btn"
+                      title="Dupliquer"
+                      aria-label={`Dupliquer la catégorie ${category.title}`}
+                      onClick={() => void onDuplicateCategory(category)}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                      </svg>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="admin-icon-btn admin-icon-btn-danger"
+                      title="Supprimer"
+                      aria-label={`Supprimer la catégorie ${category.title}`}
+                      onClick={() => void onDeleteCategory(category)}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M3 6h18" />
+                        <path d="M8 6V4h8v2" />
+                        <path d="M19 6l-1 14H6L5 6" />
+                        <path d="M10 11v6M14 11v6" />
+                      </svg>
+                    </Button>
+                  </div>
+                </header>
+
+                <div className="opt-card-body">
+                  <div className="opt-targets">
+                    <span className="opt-label">Affichée pour</span>
+                    {targets.map((target) => (
+                      <span key={target} className="opt-target">{target === 'ready' ? 'Prêt à commander' : 'À personnaliser'}</span>
+                    ))}
+                  </div>
+
+                  {type === 'text' ? (
+                    <p className="opt-note">Le client saisit un texte libre (prénom, message…).</p>
+                  ) : type === 'image' ? (
+                    <p className="opt-note">Le client choisit une image ou téléverse la sienne.</p>
+                  ) : (
+                    <ul className="opt-values">
+                      {category.values.map((value) => (
+                        <li key={value.id} className="opt-value">
+                          {value.imageUrl && <img src={value.imageUrl} alt="" />}
+                          <span>{value.label}</span>
+                          {category.pricedValues && value.price ? (
+                            <span className="opt-value-price">+{formatPrice(value.price)}</span>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
       <Modal
