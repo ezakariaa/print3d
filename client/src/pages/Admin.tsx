@@ -148,6 +148,16 @@ export function Admin() {
   const [productSortDirection, setProductSortDirection] = useState<'asc' | 'desc'>('desc');
   const [productPageSize, setProductPageSize] = useState<number>(PRODUCT_PAGE_SIZES[0]);
   const [productPage, setProductPage] = useState(1);
+  const [productView, setProductView] = useState<'table' | 'grid'>(() =>
+    (localStorage.getItem('admin-product-view') === 'grid' ? 'grid' : 'table'));
+  const changeProductView = (view: 'table' | 'grid') => {
+    setProductView(view);
+    try {
+      localStorage.setItem('admin-product-view', view);
+    } catch {
+      // Ignore storage errors
+    }
+  };
 
   // Filtered then sorted catalogue, shared by the table, the counters and the pagination.
   const filteredProducts = useMemo(() => {
@@ -746,69 +756,172 @@ export function Admin() {
 
       {isProductPage && (
         <section>
-          <div className="d-flex justify-content-between align-items-center gap-3 flex-wrap mb-3">
-            <div>
-              <h2 className="h4 mb-1">Catalogue ({products.length} produits)</h2>
-              <p className="text-secondary small mb-0">
-                Prêt à l’emploi : {products.filter((p) => p.category === 'ready').length} · À personnaliser : {products.filter((p) => p.category === 'customizable').length} · Actifs : {products.filter((p) => p.active !== false).length} · Inactifs : {products.filter((p) => p.active === false).length}
-              </p>
+          <div className="prod-stats">
+            {([
+              { key: 'all', label: 'Produits', value: products.length, onClick: () => { setProductStatusFilter('all'); setProductCategoryFilter('all'); } },
+              { key: 'active', label: 'Actifs', value: products.filter((p) => p.active !== false).length, onClick: () => setProductStatusFilter('active') },
+              { key: 'inactive', label: 'Inactifs', value: products.filter((p) => p.active === false).length, onClick: () => setProductStatusFilter('inactive') },
+              { key: 'custom', label: 'À personnaliser', value: products.filter((p) => p.category === 'customizable').length, onClick: () => setProductCategoryFilter('customizable') },
+            ]).map((stat) => (
+              <button key={stat.key} type="button" className={`prod-stat is-${stat.key}`} onClick={stat.onClick}>
+                <span className="prod-stat-value">{stat.value}</span>
+                <span className="prod-stat-label">{stat.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="prod-toolbar">
+            <div className="shop-search prod-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+              <Form.Control
+                type="search"
+                placeholder="Rechercher par nom ou description…"
+                aria-label="Rechercher un produit"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+              />
             </div>
-            <Button className="btn-brand" onClick={openNewProductModal}>Ajouter un produit</Button>
+            <div className="featured-tabs" role="tablist" aria-label="Statut">
+              {([
+                { value: 'all', label: 'Tous', count: products.length },
+                { value: 'active', label: 'Actifs', count: products.filter((p) => p.active !== false).length },
+                { value: 'inactive', label: 'Inactifs', count: products.filter((p) => p.active === false).length },
+              ] as const).map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={productStatusFilter === tab.value}
+                  className={`featured-tab${productStatusFilter === tab.value ? ' is-active' : ''}`}
+                  onClick={() => setProductStatusFilter(tab.value)}
+                >
+                  {tab.label}
+                  <span className="featured-tab-count">{tab.count}</span>
+                </button>
+              ))}
+            </div>
+            <Button className="btn-brand prod-add" onClick={openNewProductModal}>+ Ajouter un produit</Button>
           </div>
-          <div className="custom-panel mb-3 p-3">
-            <Row className="g-3 align-items-center">
-              <Col md={4}>
-                <Form.Control
-                  type="text"
-                  placeholder="Rechercher un produit par nom ou description..."
-                  value={productSearch}
-                  onChange={(e) => setProductSearch(e.target.value)}
-                />
-              </Col>
-              <Col md={2}>
-                <Form.Select
-                  value={productCategoryFilter}
-                  onChange={(e) => setProductCategoryFilter(e.target.value)}
-                >
-                  <option value="all">Toutes les catégories</option>
-                  <option value="ready">Prêt à l’emploi</option>
-                  <option value="customizable">Personnalisable</option>
-                </Form.Select>
-              </Col>
-              <Col md={2}>
-                <Form.Select
-                  value={productMaterialFilter}
-                  onChange={(e) => setProductMaterialFilter(e.target.value)}
-                >
-                  <option value="all">Tous les matériaux</option>
-                  {Array.from(new Set(products.map((p) => p.material))).filter(Boolean).map((mat) => (
-                    <option key={mat} value={mat}>{mat}</option>
-                  ))}
-                </Form.Select>
-              </Col>
-              <Col md={2}>
-                <Form.Select
-                  value={productStatusFilter}
-                  onChange={(e) => setProductStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
-                >
-                  <option value="all">Tous les statuts</option>
-                  <option value="active">Actifs uniquement</option>
-                  <option value="inactive">Inactifs uniquement</option>
-                </Form.Select>
-              </Col>
-              <Col md={2}>
-                <Form.Select
-                  aria-label="Nombre de produits par page"
-                  value={productPageSize}
-                  onChange={(e) => setProductPageSize(Number(e.target.value))}
-                >
-                  {PRODUCT_PAGE_SIZES.map((size) => (
-                    <option key={size} value={size}>{size} par page</option>
-                  ))}
-                </Form.Select>
-              </Col>
-            </Row>
+
+          <div className="prod-filters">
+            <Form.Select
+              size="sm"
+              aria-label="Catégorie"
+              value={productCategoryFilter}
+              onChange={(e) => setProductCategoryFilter(e.target.value)}
+            >
+              <option value="all">Toutes les catégories</option>
+              <option value="ready">Prêt à l’emploi</option>
+              <option value="customizable">Personnalisable</option>
+            </Form.Select>
+            <Form.Select
+              size="sm"
+              aria-label="Matériau"
+              value={productMaterialFilter}
+              onChange={(e) => setProductMaterialFilter(e.target.value)}
+            >
+              <option value="all">Tous les matériaux</option>
+              {Array.from(new Set(products.map((p) => p.material))).filter(Boolean).map((mat) => (
+                <option key={mat} value={mat}>{mat}</option>
+              ))}
+            </Form.Select>
+            <Form.Select
+              size="sm"
+              aria-label="Nombre de produits par page"
+              value={productPageSize}
+              onChange={(e) => setProductPageSize(Number(e.target.value))}
+            >
+              {PRODUCT_PAGE_SIZES.map((size) => (
+                <option key={size} value={size}>{size} par page</option>
+              ))}
+            </Form.Select>
+            <span className="prod-count">{filteredProducts.length} résultat{filteredProducts.length > 1 ? 's' : ''}</span>
+            <div className="prod-view" role="group" aria-label="Affichage">
+              <button
+                type="button"
+                className={productView === 'table' ? 'is-active' : ''}
+                aria-pressed={productView === 'table'}
+                title="Tableau"
+                onClick={() => changeProductView('table')}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+                <span>Tableau</span>
+              </button>
+              <button
+                type="button"
+                className={productView === 'grid' ? 'is-active' : ''}
+                aria-pressed={productView === 'grid'}
+                title="Grille"
+                onClick={() => changeProductView('grid')}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="4" y="4" width="7" height="7" rx="1.5" /><rect x="13" y="4" width="7" height="7" rx="1.5" />
+                  <rect x="4" y="13" width="7" height="7" rx="1.5" /><rect x="13" y="13" width="7" height="7" rx="1.5" />
+                </svg>
+                <span>Grille</span>
+              </button>
+            </div>
           </div>
+
+          {productView === 'grid' && (
+            <div className="prod-grid">
+              {filteredProducts.length === 0 && (
+                <div className="custom-panel text-secondary text-center py-5">Aucun produit ne correspond aux critères de recherche.</div>
+              )}
+              {pageProducts.map((product) => {
+                const image = getProductImage(product.slug, product.images);
+                return (
+                  <article key={product.id} className={`prod-card${product.active === false ? ' is-inactive' : ''}`}>
+                    <button
+                      type="button"
+                      className="prod-card-visual"
+                      style={{ background: product.imageGradient }}
+                      onClick={() => setPreviewProduct(product)}
+                      aria-label={`Aperçu de ${product.name}`}
+                    >
+                      {image && <img src={image} alt="" loading="lazy" />}
+                      {(product.images?.length ?? 0) > 1 && <span className="prod-card-count">{product.images!.length} photos</span>}
+                      <span className={`admin-product-category prod-card-category${product.category === 'customizable' ? ' is-custom' : ''}`}>
+                        {product.category === 'ready' ? 'Prêt à l’emploi' : 'Personnalisable'}
+                      </span>
+                    </button>
+                    <div className="prod-card-body">
+                      <h3 className="prod-card-name">{product.name}</h3>
+                      <div className="prod-card-meta">
+                        <span className="admin-product-price">{formatPrice(product.price)}</span>
+                        <span>{product.material} · {formatCreatedAt(product.createdAt)}</span>
+                      </div>
+                    </div>
+                    <div className="prod-card-foot">
+                      <Form.Check
+                        type="switch"
+                        id={`product-grid-status-${product.id}`}
+                        label={product.active !== false ? 'Actif' : 'Inactif'}
+                        checked={product.active !== false}
+                        onChange={(e) => void toggleProductStatus(product.id, e.target.checked)}
+                      />
+                      <div>
+                        <Button variant="link" className="admin-icon-btn" title="Modifier" aria-label={`Modifier ${product.name}`} onClick={() => openEditProductModal(product)}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
+                        </Button>
+                        <Button variant="link" className="admin-icon-btn" title="Dupliquer" aria-label={`Dupliquer ${product.name}`} onClick={() => void onDuplicateProduct(product)}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
+                        </Button>
+                        <Button variant="link" className="admin-icon-btn admin-icon-btn-danger" title="Supprimer" aria-label={`Supprimer ${product.name}`} onClick={() => void onDeleteProduct(product)}>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" /><path d="M10 11v6M14 11v6" /></svg>
+                        </Button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          {productView === 'table' && (
           <div className="table-responsive custom-panel admin-product-panel">
             <Table hover className="align-middle mb-0 admin-product-table">
               <thead>
@@ -870,6 +983,12 @@ export function Admin() {
                       <td>
                         <div className="fw-semibold">{product.name}</div>
                         <small className="text-secondary">{product.slug}</small>
+                        {product.tags.length > 0 && (
+                          <div className="prod-tags">
+                            {product.tags.slice(0, 3).map((tag) => <span key={tag}>#{tag}</span>)}
+                            {product.tags.length > 3 && <span>+{product.tags.length - 3}</span>}
+                          </div>
+                        )}
                       </td>
                       <td>
                         <span className={`admin-product-category${product.category === 'customizable' ? ' is-custom' : ''}`}>
@@ -953,6 +1072,7 @@ export function Admin() {
               </tbody>
             </Table>
           </div>
+          )}
           {filteredProducts.length > 0 && (
             <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mt-3">
               <small className="text-secondary">
