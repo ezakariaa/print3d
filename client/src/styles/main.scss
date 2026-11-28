@@ -4402,6 +4402,72 @@ html[data-theme='light'] .notif-panel {
   font-size: 0.8rem;
 }
 
+// Admin > Avis clients.
+.testi-table {
+  tr.is-draft td:not(:nth-last-child(-n + 2)) {
+    opacity: 0.6;
+  }
+}
+
+.testi-order {
+  display: inline-flex;
+  flex-direction: column;
+
+  .admin-icon-btn {
+    padding: 0.1rem 0.35rem;
+  }
+
+  .admin-icon-btn:disabled {
+    opacity: 0.25;
+  }
+}
+
+.testi-text-cell {
+  min-width: 18rem;
+}
+
+.testi-text {
+  display: -webkit-box;
+  margin-top: 0.25rem;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.testi-rating {
+  display: flex;
+  gap: 0.2rem;
+
+  button {
+    padding: 0.1rem;
+    border: 0;
+    border-radius: 0.3rem;
+    background: none;
+    line-height: 0;
+    cursor: pointer;
+
+    &:focus-visible {
+      outline: 2px solid var(--brand-teal);
+    }
+  }
+
+  svg {
+    width: 1.6rem;
+    height: 1.6rem;
+    fill: rgba(127, 140, 141, 0.35);
+    transition: fill 0.15s ease, transform 0.15s ease;
+  }
+
+  button.is-on svg {
+    fill: #f5b301;
+  }
+
+  button:hover svg {
+    transform: scale(1.12);
+  }
+}
+
 // Reduced motion: no scrolling, the reviews can be swiped instead.
 @media (prefers-reduced-motion: reduce) {
   .review-row {

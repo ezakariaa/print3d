@@ -53,9 +53,10 @@ import { AdminUsers } from './AdminUsers';
 import { EmailVerificationBanner } from '../components/EmailVerificationBanner';
 import { AdminSales } from './AdminSales';
 import { AdminExpenses } from './AdminExpenses';
+import { AdminTestimonials } from './AdminTestimonials';
 import { ClientDashboard } from '../components/ClientDashboard';
 
-type AdminSection = 'users' | 'orders' | 'products' | 'options' | 'quotes' | 'services' | 'carriers' | 'sales' | 'expenses';
+type AdminSection = 'users' | 'orders' | 'products' | 'options' | 'quotes' | 'services' | 'carriers' | 'sales' | 'expenses' | 'testimonials';
 
 // Each management card opens its own page (route), never below the cards.
 const ADMIN_SECTIONS: Record<AdminSection, { path: string; title: string; description: string }> = {
@@ -68,6 +69,7 @@ const ADMIN_SECTIONS: Record<AdminSection, { path: string; title: string; descri
   carriers: { path: '/admin/livraison', title: 'Transporteurs & Livraison', description: 'Gérez les transporteurs, les frais et les zones de livraison.' },
   sales: { path: '/admin/ventes', title: 'Ventes', description: 'Chiffre d’affaires, panier moyen, produits les plus vendus et résultat.' },
   expenses: { path: '/admin/charges', title: 'Charges', description: 'Achats, consommables, électricité, entretien… et leur répartition.' },
+  testimonials: { path: '/admin/avis', title: 'Avis clients', description: 'Les avis affichés sur la page d’accueil : ajout, publication et ordre.' },
 };
 
 const emptyProduct = (): Product => ({
@@ -1498,6 +1500,7 @@ export function Admin() {
       {section === 'services' && <AdminServices />}
       {section === 'sales' && <AdminSales orders={orders} expenses={expenses} />}
       {section === 'expenses' && <AdminExpenses expenses={expenses} onChange={setExpenses} />}
+      {section === 'testimonials' && <AdminTestimonials />}
     </Container>
   );
 }

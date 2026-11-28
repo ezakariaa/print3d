@@ -1,5 +1,9 @@
+import { useEffect, useState } from 'react';
 import { Container } from 'react-bootstrap';
-import { visibleTestimonials, type Testimonial } from '../config/testimonials';
+import { fetchTestimonials, type PublicTestimonial } from '../api/client';
+import { SAMPLE_TESTIMONIALS } from '../config/testimonials';
+
+type Testimonial = Omit<PublicTestimonial, 'id'> & { id?: string };
 
 const AVATAR_COLORS = ['#b7791f', '#2f855a', '#e11d48', '#0284c7', '#d97706', '#0d9488', '#c026d3', '#7c3aed'];
 
@@ -54,7 +58,12 @@ function ReviewRow({ reviews, offset, reverse }: { reviews: Testimonial[]; offse
 
 /** "Ils nous recommandent": customer reviews in two rows moving in opposite directions. */
 export function TestimonialsSection() {
-  const reviews = visibleTestimonials();
+  const [published, setPublished] = useState<Testimonial[]>([]);
+  useEffect(() => {
+    fetchTestimonials().then(setPublished).catch(() => setPublished([]));
+  }, []);
+  // Hidden while no review is published; in development the samples preview the layout.
+  const reviews = published.length > 0 || !import.meta.env.DEV ? published : SAMPLE_TESTIMONIALS;
   if (reviews.length === 0) return null;
 
   // Two rows when there are enough reviews; each row is padded so it is wider than the screen.

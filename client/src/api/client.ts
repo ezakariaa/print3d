@@ -494,6 +494,43 @@ export function deleteAdminExpense(id: string) {
   return adminRequest<{ ok: boolean }>(`/admin/expenses/${encodeURIComponent(id)}`, { method: 'DELETE' });
 }
 
+/** Customer review of the home page ("Ils nous recommandent"). */
+export interface Testimonial {
+  id: string;
+  name: string;
+  place: string;
+  text: string;
+  /** 1 to 5. */
+  rating: number;
+  /** Only published reviews appear on the site. */
+  published: boolean;
+  /** Display order (smallest first). */
+  order: number;
+}
+
+export type PublicTestimonial = Omit<Testimonial, 'published' | 'order'>;
+
+export function fetchTestimonials() {
+  return cached('testimonials', () => request<PublicTestimonial[]>('/testimonials'), CATALOGUE_CACHE);
+}
+
+export function fetchAdminTestimonials() {
+  return adminRequest<Testimonial[]>('/admin/testimonials');
+}
+
+/** Creates (empty id) or updates a review; the home page copy is refreshed. */
+export function saveAdminTestimonial(testimonial: Testimonial) {
+  return adminMutation<Testimonial>(
+    testimonial.id ? `/admin/testimonials/${encodeURIComponent(testimonial.id)}` : '/admin/testimonials',
+    { method: testimonial.id ? 'PUT' : 'POST', body: JSON.stringify(testimonial) },
+    'testimonials',
+  );
+}
+
+export function deleteAdminTestimonial(id: string) {
+  return adminMutation<{ ok: boolean }>(`/admin/testimonials/${encodeURIComponent(id)}`, { method: 'DELETE' }, 'testimonials');
+}
+
 export type DeliveryState = 'in_transit' | 'delivered' | 'returned';
 
 /** Sets the delivery state of an order (null = none); a completed and delivered order is a validated sale. */

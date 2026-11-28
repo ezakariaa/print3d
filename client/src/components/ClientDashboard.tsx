@@ -8,7 +8,7 @@ import type { Product } from '../types';
 import { formatPrice } from '../utils/formatPrice';
 import { OwnVerifiedEmailMark } from './VerifiedEmailMark';
 
-export type DashboardSectionKey = 'users' | 'orders' | 'products' | 'options' | 'quotes' | 'services' | 'carriers' | 'sales' | 'expenses';
+export type DashboardSectionKey = 'users' | 'orders' | 'products' | 'options' | 'quotes' | 'services' | 'carriers' | 'sales' | 'expenses' | 'testimonials';
 
 interface SectionInfo {
   path: string;
@@ -51,6 +51,7 @@ const ICONS: Record<string, ReactNode> = {
   revenue: svg(<><path d="M12 3v18M16.5 7.5c0-1.7-2-3-4.5-3s-4.5 1.3-4.5 3 2 2.6 4.5 3 4.5 1.3 4.5 3-2 3-4.5 3-4.5-1.3-4.5-3" /></>),
   sales: svg(<><path d="M4 19V5M4 19h16" /><path d="m7 14 4-4 3 3 5-6" /></>),
   expenses: svg(<><rect x="3" y="6" width="18" height="13" rx="2" /><path d="M3 10h18M7 15h4" /></>),
+  testimonials: svg(<><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" /><path d="m12 8.5 1.1 2.2 2.4.4-1.7 1.7.4 2.4-2.2-1.2-2.2 1.2.4-2.4-1.7-1.7 2.4-.4Z" /></>),
   arrow: svg(<path d="M5 12h14M13 6l6 6-6 6" />),
 };
 
@@ -66,7 +67,7 @@ const GROUPS: Array<{ title: string; keys: DashboardSectionKey[] }> = [
   { title: 'Finances', keys: ['sales', 'expenses'] },
   { title: 'Commandes et devis', keys: ['orders', 'quotes'] },
   { title: 'Catalogue', keys: ['products', 'options', 'services'] },
-  { title: 'Clients et livraison', keys: ['users', 'carriers'] },
+  { title: 'Clients et livraison', keys: ['users', 'testimonials', 'carriers'] },
 ];
 
 function ShortcutCard({ to, icon, title, text, badge }: {

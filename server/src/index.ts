@@ -51,7 +51,7 @@ function safely(task: () => unknown, label: string) {
 }
 
 // Public catalogue reads (no credentials) are cacheable by the CDN.
-const PUBLIC_CATALOGUE_PATH = /^\/api\/(products(\/[^/]+)?|options|services|carriers)\/?$/;
+const PUBLIC_CATALOGUE_PATH = /^\/api\/(products(\/[^/]+)?|options|services|carriers|testimonials)\/?$/;
 const CATALOGUE_CDN_TAG = 'catalogue';
 const isPublicCatalogueRead = (req: Request) =>
   (req.method === 'GET' || req.method === 'HEAD') && PUBLIC_CATALOGUE_PATH.test(req.path);
@@ -775,6 +775,47 @@ const expensesCache = new CatalogueCache<StoredRecord>('expenses', cacheOptions,
   return snapshot.docs.map((doc) => toStoredRecord(doc.id, doc.data()));
 });
 
+// Customer reviews of the home page ("Ils nous recommandent"), managed in the Admin.
+interface Testimonial {
+  id: string;
+  name: string;
+  place: string;
+  text: string;
+  rating: number;
+  published: boolean;
+  /** Display order (smallest first). */
+  order: number;
+}
+
+function parseTestimonial(value: unknown, id: string): Testimonial | null {
+  if (!value || typeof value !== 'object') return null;
+  const t = value as Record<string, unknown>;
+  const text = (v: unknown, max: number) => (typeof v === 'string' && v.trim().length <= max ? v.trim() : null);
+  const name = text(t.name, 80);
+  const place = text(t.place ?? '', 80);
+  const body = text(t.text, 600);
+  const rating = Number(t.rating);
+  if (!name || place === null || !body || !Number.isInteger(rating) || rating < 1 || rating > 5) return null;
+  return {
+    id,
+    name,
+    place,
+    text: body,
+    rating,
+    published: t.published === true,
+    order: Number.isFinite(Number(t.order)) ? Number(t.order) : Date.now(),
+  };
+}
+
+const testimonialsCache = new CatalogueCache<Testimonial>('testimonials', cacheOptions, async () => {
+  const snapshot = await getDb().collection('Testimonials').get();
+  return snapshot.docs
+    .map((doc) => parseTestimonial(doc.data(), doc.id))
+    .filter((item): item is Testimonial => item !== null);
+});
+
+const byDisplayOrder = (a: Testimonial, b: Testimonial) => a.order - b.order;
+
 interface StoredProfile {
   id: string;
   firstName: string;
@@ -1400,6 +1441,16 @@ app.get('/api/carriers', async (_req, res) => {
   }
 });
 
+app.get('/api/testimonials', async (_req, res) => {
+  try {
+    const list = (await testimonialsCache.list()).filter((item) => item.published).sort(byDisplayOrder);
+    res.json(list.map(({ published: _published, order: _order, ...item }) => item));
+  } catch (error) {
+    console.warn('[testimonials] Lecture impossible.', error);
+    res.json([]);
+  }
+});
+
 app.post('/api/contact', (req, res) => {
   const { name, email, subject, message, serviceId } = req.body ?? {};
 
@@ -1983,7 +2034,7 @@ app.get('/api/admin/options', async (_req, res) => {
 // path, besides the very first start, that performs collection reads.
 app.post('/api/admin/cache/refresh', async (_req, res) => {
   try {
-    const caches = { products: productsCache, services: servicesCache, options: optionsCache, carriers: carriersCache, orders: ordersCache, quotes: quotesCache, expenses: expensesCache, profiles: profilesCache };
+    const caches = { products: productsCache, services: servicesCache, options: optionsCache, carriers: carriersCache, orders: ordersCache, quotes: quotesCache, expenses: expensesCache, profiles: profilesCache, testimonials: testimonialsCache };
     Object.values(caches).forEach((cache) => cache.reset());
     const counts = Object.fromEntries(
       await Promise.all(Object.entries(caches).map(async ([name, cache]) => [name, (await cache.list()).length])),
@@ -2441,6 +2492,68 @@ app.delete('/api/admin/expenses/:id', async (req, res) => {
     }
     await ref.delete();
     expensesCache.remove(ref.id);
+    res.json({ ok: true });
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
+app.get('/api/admin/testimonials', async (_req, res) => {
+  try {
+    res.json([...(await testimonialsCache.list())].sort(byDisplayOrder));
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
+const TESTIMONIAL_ERROR = 'Avis invalide : nom (80 caractères max), texte (600 max) et note de 1 à 5 sont requis.';
+
+app.post('/api/admin/testimonials', async (req, res) => {
+  const testimonial = parseTestimonial(req.body, randomUUID());
+  if (!testimonial) {
+    res.status(400).json({ error: TESTIMONIAL_ERROR });
+    return;
+  }
+  try {
+    const { id, ...data } = testimonial;
+    await getDb().collection('Testimonials').doc(id).set({ ...data, createdAt: FieldValue.serverTimestamp() });
+    testimonialsCache.upsert(testimonial);
+    res.status(201).json(testimonial);
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
+app.put('/api/admin/testimonials/:id', async (req, res) => {
+  const testimonial = parseTestimonial(req.body, req.params.id);
+  if (!testimonial) {
+    res.status(400).json({ error: TESTIMONIAL_ERROR });
+    return;
+  }
+  try {
+    const ref = getDb().collection('Testimonials').doc(req.params.id);
+    if (!(await ref.get()).exists) {
+      res.status(404).json({ error: 'Avis introuvable.' });
+      return;
+    }
+    const { id: _id, ...data } = testimonial;
+    await ref.update({ ...data, updatedAt: FieldValue.serverTimestamp() });
+    testimonialsCache.upsert(testimonial);
+    res.json(testimonial);
+  } catch (error) {
+    sendFirebaseError(res, error);
+  }
+});
+
+app.delete('/api/admin/testimonials/:id', async (req, res) => {
+  try {
+    const ref = getDb().collection('Testimonials').doc(req.params.id);
+    if (!(await ref.get()).exists) {
+      res.status(404).json({ error: 'Avis introuvable.' });
+      return;
+    }
+    await ref.delete();
+    testimonialsCache.remove(ref.id);
     res.json({ ok: true });
   } catch (error) {
     sendFirebaseError(res, error);
