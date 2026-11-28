@@ -1,6 +1,6 @@
 import { useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from 'react';
 import { Alert, Button, Col, Form, Modal, Row } from 'react-bootstrap';
-import { registerUser, sendPasswordReset, signInAdmin } from '../firebase';
+import { ProfileNotSavedError, registerUser, sendPasswordReset, signInAdmin } from '../firebase';
 
 // ---------- Icons (stroke, inherit currentColor) ----------
 const svgProps = {
@@ -189,6 +189,13 @@ export function AuthModal({ show, onHide, onSignedIn }: AuthModalProps) {
       setMode('login');
       setNotice(`Votre compte a été créé. Un e-mail de confirmation vient d’être envoyé à ${reg.email.trim()} : cliquez sur son lien pour vérifier votre adresse. Vous pouvez déjà vous connecter.`);
     } catch (err) {
+      if (err instanceof ProfileNotSavedError) {
+        // The account exists: go to sign-in, the details are completed in « Mon profil ».
+        setEmail(reg.email.trim());
+        setMode('login');
+        setError(err.message);
+        return;
+      }
       setError(authMessage(err, 'Inscription impossible.'));
     } finally {
       setLoading(false);

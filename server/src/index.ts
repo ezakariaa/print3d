@@ -925,6 +925,20 @@ app.get('/api/profile', async (req, res) => {
         }
       }
     }
+    if (!stored) {
+      // Account without a "Users" document (its sign-up could not save it): create it now,
+      // so every account appears in the collection with what Firebase Auth knows.
+      const [firstName = '', ...rest] = (typeof user.name === 'string' ? user.name : '').trim().split(/\s+/);
+      stored = toStoredProfile(user.uid, { firstName, lastName: rest.join(' '), country: 'Maroc' }, user.email ?? '');
+      const { id: _newId, ...fields } = stored;
+      await getDb().collection('Users').doc(user.uid).set({
+        ...fields,
+        role: 'Utilisateur',
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      }, { merge: true });
+      profilesCache.upsert(stored);
+    }
   } catch (error) {
     console.warn('[firebase] Firestore indisponible, profil vide.', error);
   }
@@ -1239,21 +1253,21 @@ app.put('/api/cart', async (req, res) => {
 });
 
 app.post('/api/register', async (req, res) => {
-  const { uid, email, firstName, lastName, phone, address, city, country } = req.body ?? {};
-
-  if (!uid || typeof uid !== 'string') {
-    res.status(400).json({ error: 'Identifiant utilisateur manquant.' });
-    return;
-  }
+  // Only the new account itself may write its profile: the uid comes from its session token.
+  const user = await requireSignedInUser(req, res);
+  if (!user) return;
+  const { uid } = user;
+  const { firstName, lastName, phone, address, city, country } = req.body ?? {};
+  const text = (value: unknown, max: number) => (typeof value === 'string' ? value.trim().slice(0, max) : '');
 
   const profileData = {
-    firstName: typeof firstName === 'string' ? firstName.trim() : '',
-    lastName: typeof lastName === 'string' ? lastName.trim() : '',
-    email: typeof email === 'string' ? email.trim() : '',
-    phone: typeof phone === 'string' ? phone.trim() : '',
-    address: typeof address === 'string' ? address.trim() : '',
-    city: typeof city === 'string' ? city.trim() : '',
-    country: typeof country === 'string' && country.trim() ? country.trim() : 'Maroc',
+    firstName: text(firstName, 100),
+    lastName: text(lastName, 100),
+    email: user.email ?? '',
+    phone: text(phone, 40),
+    address: text(address, 300),
+    city: text(city, 100),
+    country: text(country, 100) || 'Maroc',
     role: 'Utilisateur',
   };
 

@@ -15,7 +15,6 @@ import {
   updateProfile,
   type User,
 } from 'firebase/auth';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable } from 'firebase/storage';
 
 const config = {
@@ -139,13 +138,19 @@ export interface RegisterPayload {
   password: string;
 }
 
+/** The account exists but its details could not be saved: the customer completes them in "Mon profil". */
+export class ProfileNotSavedError extends Error {
+  constructor() {
+    super('Votre compte a été créé, mais vos informations n’ont pas pu être enregistrées. Connectez-vous puis complétez « Mon profil ».');
+    this.name = 'ProfileNotSavedError';
+  }
+}
+
 export async function registerUser(payload: RegisterPayload): Promise<User> {
   const auth = getFirebaseAuth();
-  const db = getFirestore(getFirebaseApp());
   const { email, password, firstName, lastName, phone, address, city } = payload;
 
   const credentials = await createUserWithEmailAndPassword(auth, email, password);
-  const { uid } = credentials.user;
 
   // Set displayName in Firebase Auth
   try {
@@ -157,41 +162,24 @@ export async function registerUser(payload: RegisterPayload): Promise<User> {
     console.warn('updateProfile warning:', err);
   }
 
-  const profileData = {
-    uid,
-    email,
-    firstName,
-    lastName,
-    phone,
-    address,
-    city,
-    country: 'Maroc',
-    role: 'Utilisateur',
-    createdAt: new Date().toISOString(),
-  };
-
-  // 1. Direct write to Firestore collection 'Users' (and 'users' as fallback)
-  try {
-    await setDoc(doc(db, 'Users', uid), profileData);
-  } catch (err) {
-    console.warn('Client setDoc Users failed, server will ensure write:', err);
-  }
-  try {
-    await setDoc(doc(db, 'users', uid), profileData);
-  } catch {
-    // ignore
-  }
-
-  // 2. Also save via backend (Admin SDK) to guarantee saving in Firestore 'Users'
-  try {
-    const apiBase = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000/api');
-    await fetch(`${apiBase}/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profileData),
-    });
-  } catch (err) {
-    console.warn('Backend /api/register call warning:', err);
+  // The profile is saved by the API in the Firestore "Users" collection (the security rules
+  // refuse writes from the browser). The session token proves which account it belongs to.
+  const profileData = { firstName, lastName, phone, address, city, country: 'Maroc' };
+  const apiBase = import.meta.env.VITE_API_URL ?? (import.meta.env.PROD ? '/api' : 'http://localhost:4000/api');
+  let profileSaved = false;
+  for (let attempt = 0; attempt < 2 && !profileSaved; attempt += 1) {
+    try {
+      const token = await credentials.user.getIdToken();
+      const response = await fetch(`${apiBase}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(profileData),
+      });
+      profileSaved = response.ok;
+      if (!response.ok) console.error('Enregistrement du profil refusé :', response.status, await response.text());
+    } catch (err) {
+      console.error('Enregistrement du profil impossible :', err);
+    }
   }
 
   // Confirmation e-mail: the owner of the address clicks its link to verify it.
@@ -205,5 +193,8 @@ export async function registerUser(payload: RegisterPayload): Promise<User> {
   // Sign back out so the registration doesn't auto-login as admin
   await signOut(auth);
 
+  if (!profileSaved) {
+    throw new ProfileNotSavedError();
+  }
   return credentials.user;
 }
