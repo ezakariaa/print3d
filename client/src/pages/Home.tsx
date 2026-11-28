@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { fetchProducts } from '../api/client';
 import { HeroVideoBackground } from '../components/HeroVideoBackground';
 import { ProductCard } from '../components/ProductCard';
+import { TestimonialsSection } from '../components/TestimonialsSection';
 import type { Product, ProductCategory } from '../types';
 
 // Two rows of four cards on large screens.
@@ -235,6 +236,8 @@ export function Home() {
           </Row>
         </Container>
       </section>
+
+      <TestimonialsSection />
     </>
   );
 }

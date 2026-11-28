@@ -4269,6 +4269,183 @@ html[data-theme='light'] .notif-panel {
   text-transform: uppercase;
 }
 
+// ---------- Accueil : « Ils nous recommandent » (avis clients qui défilent) ----------
+.reviews-section {
+  overflow: hidden;
+}
+
+.reviews-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.9rem;
+  padding: 0.3rem 0.85rem;
+  border: 1px solid rgba(217, 119, 6, 0.5);
+  border-radius: 999px;
+  background: rgba(217, 119, 6, 0.1);
+  color: #f59e0b;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+
+  span {
+    font-size: 0.55rem;
+  }
+}
+
+.review-rows {
+  display: grid;
+  gap: 1.25rem;
+  margin-top: 2.5rem;
+}
+
+.review-row {
+  overflow: hidden;
+  // Cards fade in and out at both edges.
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+
+  &:hover .review-track {
+    animation-play-state: paused;
+  }
+}
+
+.review-track {
+  display: flex;
+  width: max-content;
+  animation: reviews-scroll linear infinite;
+
+  .is-reverse & {
+    animation-direction: reverse;
+  }
+}
+
+.review-group {
+  display: flex;
+  gap: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+@keyframes reviews-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.review-card {
+  display: flex;
+  flex: 0 0 20rem;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin: 0;
+  padding: 1.35rem 1.4rem;
+  border: 1px solid rgba(197, 212, 206, 0.12);
+  border-radius: 1.1rem;
+  background: rgba(255, 255, 255, 0.03);
+  text-align: left;
+
+  @media (max-width: 575.98px) {
+    flex-basis: 16.5rem;
+  }
+}
+
+.review-stars {
+  display: flex;
+  gap: 0.15rem;
+
+  svg {
+    width: 1rem;
+    height: 1rem;
+    fill: rgba(197, 212, 206, 0.25);
+
+    &.is-on {
+      fill: #f5b301;
+    }
+  }
+}
+
+.review-text {
+  flex: 1;
+  margin: 0;
+  color: rgba(232, 242, 239, 0.85);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.review-author {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+
+  > span:last-child {
+    display: grid;
+  }
+}
+
+.review-avatar {
+  display: grid;
+  flex: 0 0 2.3rem;
+  width: 2.3rem;
+  height: 2.3rem;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.review-name {
+  font-weight: 700;
+}
+
+.review-place {
+  color: rgba(232, 242, 239, 0.55);
+  font-size: 0.8rem;
+}
+
+// Reduced motion: no scrolling, the reviews can be swiped instead.
+@media (prefers-reduced-motion: reduce) {
+  .review-row {
+    overflow-x: auto;
+  }
+
+  .review-track {
+    animation: none;
+  }
+
+  .review-group[aria-hidden],
+  .review-group + .review-group {
+    display: none;
+  }
+}
+
+html[data-theme='light'] {
+  .reviews-kicker {
+    color: #b45309;
+  }
+
+  .review-card {
+    border-color: rgba(23, 36, 45, 0.1);
+    background: #fff;
+    box-shadow: 0 10px 30px rgba(23, 36, 45, 0.06);
+  }
+
+  .review-stars svg {
+    fill: rgba(23, 36, 45, 0.15);
+
+    &.is-on {
+      fill: #f5b301;
+    }
+  }
+
+  .review-text {
+    color: #2f3e48;
+  }
+
+  .review-place {
+    color: rgba(23, 36, 45, 0.55);
+  }
+}
+
 .way-card {
   --way-accent: #12b8a0;
   position: relative;
