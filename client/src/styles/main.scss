@@ -4622,8 +4622,27 @@ html[data-theme='light'] .featured-tabs {
 
 .ao-tabs {
   display: flex;
+  flex: 1 1 auto;
   flex-wrap: wrap;
   gap: 0.4rem;
+}
+
+// "Statut" / "Livraison": the two filter rows line up behind their labels.
+.ao-filter-label {
+  flex: 0 0 5.5rem;
+  color: var(--dashboard-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+
+  @media (max-width: 575.98px) {
+    flex-basis: 100%;
+  }
+}
+
+.ao-toolbar-delivery {
+  margin-top: -0.35rem;
 }
 
 .ao-tab {

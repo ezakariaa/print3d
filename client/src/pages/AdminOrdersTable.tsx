@@ -16,6 +16,17 @@ const STATUS_FILTERS = [
   { value: 'cancelled', label: 'Annulées' },
 ];
 
+/** Delivery filters, combined with the order status filters. */
+const DELIVERY_FILTERS = [
+  { value: 'all', label: 'Toutes' },
+  { value: 'none', label: 'Non expédiées' },
+  { value: 'in_transit', label: 'En cours de livraison' },
+  { value: 'delivered', label: 'Livrées' },
+  { value: 'returned', label: 'Retournées' },
+];
+
+const deliveryKey = (order: AdminOrder) => deliveryStateOf(order) ?? 'none';
+
 function dateLabel(value: string | null) {
   if (!value) return '—';
   const date = new Date(value);
@@ -63,23 +74,36 @@ export function AdminOrdersTable({ orders, products, onStatusChange, onDeliveryC
   const [invoiceOrder, setInvoiceOrder] = useState<AdminOrder | null>(null);
   const [editOrder, setEditOrder] = useState<AdminOrder | null>(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [deliveryFilter, setDeliveryFilter] = useState('all');
   const [search, setSearch] = useState('');
 
   const productById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
 
+  // Each row's counts follow the other row's choice, so they match what a click will show.
   const counts = useMemo(() => {
-    const result: Record<string, number> = { all: orders.length };
-    orders.forEach((order) => { result[order.status] = (result[order.status] ?? 0) + 1; });
+    const result: Record<string, number> = {};
+    const shown = orders.filter((order) => deliveryFilter === 'all' || deliveryKey(order) === deliveryFilter);
+    result.all = shown.length;
+    shown.forEach((order) => { result[order.status] = (result[order.status] ?? 0) + 1; });
     return result;
-  }, [orders]);
+  }, [orders, deliveryFilter]);
+
+  const deliveryCounts = useMemo(() => {
+    const result: Record<string, number> = {};
+    const shown = orders.filter((order) => statusFilter === 'all' || order.status === statusFilter);
+    result.all = shown.length;
+    shown.forEach((order) => { const key = deliveryKey(order); result[key] = (result[key] ?? 0) + 1; });
+    return result;
+  }, [orders, statusFilter]);
 
   const visible = useMemo(() => {
     const term = search.trim().toLowerCase();
     return orders.filter((order) => (
       (statusFilter === 'all' || order.status === statusFilter) &&
+      (deliveryFilter === 'all' || deliveryKey(order) === deliveryFilter) &&
       (!term || searchText(order).includes(term))
     ));
-  }, [orders, statusFilter, search]);
+  }, [orders, statusFilter, deliveryFilter, search]);
 
   const imageFor = (item: AdminOrder['items'][number]) => {
     const product = item.productId ? productById.get(item.productId) : undefined;
@@ -89,7 +113,8 @@ export function AdminOrdersTable({ orders, products, onStatusChange, onDeliveryC
   return (
     <>
       <div className="ao-toolbar">
-        <div className="ao-tabs" role="tablist" aria-label="Filtrer par statut">
+        <span className="ao-filter-label" id="ao-status-label">Statut</span>
+        <div className="ao-tabs" role="tablist" aria-labelledby="ao-status-label">
           {STATUS_FILTERS.map((filter) => (
             <button
               key={filter.value}
@@ -101,6 +126,24 @@ export function AdminOrdersTable({ orders, products, onStatusChange, onDeliveryC
             >
               {filter.label}
               <span className="ao-tab-count">{counts[filter.value] ?? 0}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="ao-toolbar ao-toolbar-delivery">
+        <span className="ao-filter-label" id="ao-delivery-label">Livraison</span>
+        <div className="ao-tabs" role="tablist" aria-labelledby="ao-delivery-label">
+          {DELIVERY_FILTERS.map((filter) => (
+            <button
+              key={filter.value}
+              type="button"
+              role="tab"
+              aria-selected={deliveryFilter === filter.value}
+              className={`ao-tab is-delivery-${filter.value}${deliveryFilter === filter.value ? ' is-active' : ''}`}
+              onClick={() => setDeliveryFilter(filter.value)}
+            >
+              {filter.label}
+              <span className="ao-tab-count">{deliveryCounts[filter.value] ?? 0}</span>
             </button>
           ))}
         </div>
