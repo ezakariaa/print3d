@@ -370,7 +370,7 @@ export function deleteAdminCarrier(id: string) {
 }
 
 export function saveAdminProduct(product: Product, isNew: boolean) {
-  return adminMutation<{ ok: boolean }>(
+  return adminMutation<{ ok: boolean; product?: Product }>(
     isNew ? '/admin/products' : `/admin/products/${encodeURIComponent(product.id)}`,
     { method: isNew ? 'POST' : 'PUT', body: JSON.stringify(product) },
     'products',

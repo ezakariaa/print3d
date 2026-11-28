@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Alert, Button, Col, Container, Form, Row } from 'react-bootstrap';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { fetchOptionCategories, fetchProduct } from '../api/client';
 import { useCart } from '../context/CartContext';
 import type { CartCustomization, Product, ProductOptionCategory, ProductOptionValue } from '../types';
@@ -28,6 +28,7 @@ function extraLabel(category: ProductOptionCategory, value: ProductOptionValue) 
 
 export function ProductDetail() {
   const { slug } = useParams();
+  const navigate = useNavigate();
   const { addItem } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [optionCategories, setOptionCategories] = useState<ProductOptionCategory[]>([]);
@@ -55,6 +56,8 @@ export function ProductDetail() {
           setProduct(null);
           return;
         }
+        // Old address (renamed product): show the current one in the address bar.
+        if (p.slug && p.slug !== slug) navigate(`/produit/${p.slug}`, { replace: true });
         setProduct(p);
         setColor(p.colors[0] ?? '');
         setSelectedImage(getProductImage(p.slug, p.images) ?? '');

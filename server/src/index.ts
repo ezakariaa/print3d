@@ -470,22 +470,40 @@ const versionsDoc = () => getDb().collection('_meta').doc('cacheVersions');
 let knownVersions: { at: number; values: Record<string, string> } | null = null;
 let versionsRead: Promise<Record<string, string>> | null = null;
 
+// Fast path between Vercel instances: every bump is also written to the Runtime Cache (no
+// Firestore read), which each instance checks at most every few seconds. Without it, another
+// instance would keep serving the old catalogue until its next Firestore check (1 min), and the
+// CDN would store that stale answer again right after its purge.
+const SHARED_VERSIONS_KEY = 'catalogue:versions';
+const SHARED_VERSION_CHECK_MS = 2_000;
+let sharedVersions: { at: number; values: Record<string, string> } | null = null;
+
+/** The most recent of two versions ("<timestamp>-<random>"), per collection. */
+function newestVersions(a: Record<string, string>, b: Record<string, string>) {
+  const merged = { ...a };
+  for (const [name, version] of Object.entries(b)) {
+    const stamp = (value: string | undefined) => Number(value?.split('-')[0]) || 0;
+    if (stamp(version) >= stamp(merged[name])) merged[name] = version;
+  }
+  return merged;
+}
+
+async function readSharedVersions(): Promise<Record<string, string>> {
+  if (!onVercel) return {};
+  if (sharedVersions && Date.now() - sharedVersions.at < SHARED_VERSION_CHECK_MS) return sharedVersions.values;
+  try {
+    const values = ((await getCache().get(SHARED_VERSIONS_KEY)) ?? {}) as Record<string, string>;
+    sharedVersions = { at: Date.now(), values };
+    return values;
+  } catch {
+    return sharedVersions?.values ?? {};
+  }
+}
+
 const cacheVersions: VersionSource = {
-  current() {
-    if (knownVersions && Date.now() - knownVersions.at < VERSION_CHECK_MS) {
-      return Promise.resolve(knownVersions.values);
-    }
-    versionsRead ??= versionsDoc()
-      .get()
-      .then((snapshot) => {
-        const values = (snapshot.data() ?? {}) as Record<string, string>;
-        knownVersions = { at: Date.now(), values };
-        return values;
-      })
-      .finally(() => {
-        versionsRead = null;
-      });
-    return versionsRead;
+  async current() {
+    const fromFirestore = await firestoreVersions();
+    return newestVersions(fromFirestore, await readSharedVersions());
   },
   bump(name) {
     const version = `${Date.now()}-${randomUUID().slice(0, 8)}`;
@@ -494,9 +512,46 @@ const cacheVersions: VersionSource = {
       .set({ [name]: version }, { merge: true })
       .catch((error: unknown) => console.warn(`[cache] ${name}: version non enregistrée.`, error));
     runInBackground(write);
+    if (onVercel) {
+      const values = { ...(sharedVersions?.values ?? {}), [name]: version };
+      sharedVersions = { at: Date.now(), values };
+      runInBackground(
+        Promise.resolve(getCache().get(SHARED_VERSIONS_KEY))
+          .then((current) => getCache().set(
+            SHARED_VERSIONS_KEY,
+            newestVersions((current ?? {}) as Record<string, string>, { [name]: version }),
+            { ttl: 30 * 24 * 60 * 60 },
+          ))
+          .catch((error: unknown) => console.warn(`[cache] ${name}: version partagée non enregistrée.`, error)),
+      );
+    }
     return version;
   },
 };
+
+/** Versions stored in Firestore: read at most once a minute (or right away after forgetVersions). */
+function firestoreVersions(): Promise<Record<string, string>> {
+  if (knownVersions && Date.now() - knownVersions.at < VERSION_CHECK_MS) {
+    return Promise.resolve(knownVersions.values);
+  }
+  versionsRead ??= versionsDoc()
+    .get()
+    .then((snapshot) => {
+      const values = (snapshot.data() ?? {}) as Record<string, string>;
+      // A local bump may be newer than what Firestore has received yet.
+      knownVersions = { at: Date.now(), values: newestVersions(values, knownVersions?.values ?? {}) };
+      return knownVersions.values;
+    })
+    .finally(() => {
+      versionsRead = null;
+    });
+  return versionsRead;
+}
+
+/** The administrator always sees the latest data: the next read checks Firestore again. */
+function forgetVersions() {
+  knownVersions = null;
+}
 
 // On Vercel, instances also share their copies through the Runtime Cache, so a cold start
 // does not read Firestore when the collection has not changed.
@@ -1410,7 +1465,10 @@ app.get('/api/products', async (req, res) => {
 
 app.get('/api/products/:slug', async (req, res) => {
   try {
-    const product = (await listProducts()).find((item) => item.slug === req.params.slug && item.active !== false);
+    const visible = (await listProducts()).filter((item) => item.active !== false);
+    // After a rename the old address still works: it is the product's identifier.
+    const product = visible.find((item) => item.slug === req.params.slug)
+      ?? visible.find((item) => item.id === req.params.slug);
     if (!product) {
       res.status(404).json({ error: 'Produit introuvable' });
       return;
@@ -1731,6 +1789,8 @@ app.post('/api/quotes', async (req, res) => {
 
 app.use('/api/admin', async (req: Request, res: Response, next: NextFunction) => {
   if (!(await requireAdmin(req, res))) return;
+  // Admin pages read the latest data, even when another server just changed it.
+  if (req.method === 'GET') forgetVersions();
   if (req.method !== 'GET') {
     // A successful admin change makes the CDN copies of the public catalogue stale.
     const json = res.json.bind(res);
@@ -1933,7 +1993,12 @@ app.put('/api/admin/products/:id', async (req, res) => {
     return;
   }
   try {
-    const existing = (await listProducts()).find((p) => p.id === req.params.id);
+    const all = await listProducts();
+    if (all.some((p) => p.id !== req.params.id && p.slug === req.body.slug)) {
+      res.status(409).json({ error: 'Un autre produit utilise déjà cet identifiant URL : changez légèrement le nom.' });
+      return;
+    }
+    const existing = all.find((p) => p.id === req.params.id);
     const active = typeof req.body.active === 'boolean'
       ? req.body.active
       : (existing?.active !== false);
@@ -1951,7 +2016,7 @@ app.put('/api/admin/products/:id', async (req, res) => {
       updatedAt: FieldValue.serverTimestamp(),
     });
     productsCache.upsert(productData);
-    res.json({ ok: true });
+    res.json({ ok: true, product: productData });
   } catch (error) {
     sendFirebaseError(res, error);
   }
@@ -1990,7 +2055,8 @@ app.post('/api/admin/products', async (req, res) => {
   }
   try {
     // Duplicate check uses the cached list, which avoids a Firestore read.
-    const existing = (await listProducts()).some((product) => product.id === req.body.id);
+    const all = await listProducts();
+    const existing = all.some((product) => product.id === req.body.id || product.slug === req.body.slug);
     if (existing) {
       res.status(409).json({ error: 'Cet identifiant de produit existe déjà.' });
       return;
@@ -2005,8 +2071,9 @@ app.post('/api/admin/products', async (req, res) => {
       ...productData,
       createdAt: FieldValue.serverTimestamp(),
     });
-    productsCache.upsert({ ...productData, createdAt: new Date().toISOString() });
-    res.status(201).json({ ok: true });
+    const created = { ...productData, createdAt: new Date().toISOString() };
+    productsCache.upsert(created);
+    res.status(201).json({ ok: true, product: created });
   } catch (error) {
     sendFirebaseError(res, error);
   }

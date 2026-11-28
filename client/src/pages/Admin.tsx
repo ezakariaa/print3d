@@ -338,13 +338,17 @@ export function Admin() {
         images: draft.images ?? [],
         active: draft.active !== false,
       };
-      await saveAdminProduct(product, isNew);
+      const result = await saveAdminProduct(product, isNew);
+      // Show the saved product at once (with its stored image addresses), without a reload.
+      const saved = { ...product, ...(result.product ?? {}) };
+      setProducts((current) => (current.some((item) => item.id === saved.id)
+        ? current.map((item) => (item.id === saved.id ? saved : item))
+        : [saved, ...current]));
       setDraft(emptyProduct());
       setTagInput('');
       setEditingId(null);
       setShowProductModal(false);
       setNotice('Produit enregistré.');
-      await loadData();
     } catch (err) {
       showError(err);
     } finally {
@@ -1220,11 +1224,17 @@ export function Admin() {
                 value={draft.name}
                 onChange={(event) => {
                   const name = event.target.value;
-                  setDraft({ ...draft, name, ...(editingId === null ? { slug: slugify(name) } : {}) });
+                  // The page address follows the name (new and existing products), and stays
+                  // unique: "-2", "-3"… when another product already uses it.
+                  const base = slugify(name);
+                  const taken = new Set(products.filter((p) => p.id !== editingId).flatMap((p) => [p.slug, p.id]));
+                  let slug = base;
+                  for (let n = 2; slug && taken.has(slug); n += 1) slug = `${base}-${n}`;
+                  setDraft({ ...draft, name, slug });
                 }}
               />
               <Form.Text>
-                Identifiant URL :{' '}
+                Adresse de la page : /produit/{' '}
                 {draft.slug ? <code>{draft.slug}</code> : <span className="text-secondary">généré à partir du nom</span>}
               </Form.Text>
             </Form.Group>
