@@ -1535,7 +1535,7 @@ app.post('/api/orders', async (req, res) => {
     return;
   }
   const city = typeof customer.city === 'string' ? customer.city.trim().slice(0, 120) : '';
-  if (paymentMethod !== 'cash_on_delivery' && paymentMethod !== 'bank_transfer') {
+  if (!PAYMENT_METHODS.has(paymentMethod)) {
     res.status(400).json({ error: 'Choisissez un mode de paiement.' });
     return;
   }
@@ -1666,14 +1666,30 @@ app.post('/api/orders', async (req, res) => {
     res.status(201).json({
       ok: true,
       orderId,
-      message: paymentMethod === 'bank_transfer'
-        ? `Commande ${orderId} enregistrée. L’atelier vous envoie ses coordonnées bancaires à ${customer.email} ; la commande sera préparée dès réception du virement.`
-        : `Commande ${orderId} enregistrée. Vous paierez à la livraison ; l’atelier vous recontactera à ${customer.email}.`,
+      message: orderConfirmation(paymentMethod as PaymentMethod, orderId, customer.email),
     });
   } catch (error) {
     sendFirebaseError(res, error);
   }
 });
+
+type PaymentMethod = 'cash_on_delivery' | 'bank_transfer' | 'wafacash' | 'cashplus';
+const PAYMENT_METHODS = new Set<unknown>(['cash_on_delivery', 'bank_transfer', 'wafacash', 'cashplus']);
+
+/** Message shown to the customer once the order is recorded, by payment method. */
+function orderConfirmation(method: PaymentMethod, orderId: string, email: string) {
+  switch (method) {
+    case 'bank_transfer':
+      return `Commande ${orderId} enregistrée. L’atelier vous envoie ses coordonnées bancaires à ${email} ; la commande sera préparée dès réception du virement.`;
+    case 'wafacash':
+    case 'cashplus': {
+      const network = method === 'wafacash' ? 'Wafacash' : 'Cash Plus';
+      return `Commande ${orderId} enregistrée. Envoyez le montant par ${network}, puis transmettez-nous le code du transfert sur WhatsApp en indiquant le n° ${orderId} ; la commande sera préparée dès réception.`;
+    }
+    default:
+      return `Commande ${orderId} enregistrée. Vous paierez à la livraison ; l’atelier vous recontactera à ${email}.`;
+  }
+}
 
 app.post('/api/quotes', async (req, res) => {
   const { name, email, message, filePath, fileName, fileSize } = req.body ?? {};
@@ -2456,7 +2472,7 @@ function parseAdminOrderUpdate(body: unknown) {
       delay: ((s.delay as string | undefined) ?? '').trim(),
     };
   }
-  if (paymentMethod !== 'cash_on_delivery' && paymentMethod !== 'bank_transfer') return null;
+  if (!PAYMENT_METHODS.has(paymentMethod)) return null;
   if (typeof status !== 'string' || !ORDER_STATUSES.has(status)) return null;
   const subtotal = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
   return {

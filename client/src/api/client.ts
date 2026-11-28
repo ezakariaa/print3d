@@ -138,11 +138,13 @@ export function fetchMyOrders() {
   return authenticatedRequest<AdminOrder[]>('/my-orders');
 }
 
-export type PaymentMethod = 'cash_on_delivery' | 'bank_transfer';
+export type PaymentMethod = 'cash_on_delivery' | 'bank_transfer' | 'wafacash' | 'cashplus';
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   cash_on_delivery: 'Paiement à la livraison',
   bank_transfer: 'Virement bancaire',
+  wafacash: 'Transfert Wafacash',
+  cashplus: 'Transfert Cash Plus',
 };
 
 export interface AdminOrder {

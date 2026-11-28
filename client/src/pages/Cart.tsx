@@ -11,6 +11,7 @@ import {
   type PaymentMethod,
   type UserProfile,
 } from '../api/client';
+import { COMPANY } from '../config/company';
 import { useCart } from '../context/CartContext';
 import { getFirebaseAuth, isFirebaseConfigured, onAuthStateChanged } from '../firebase';
 import { readCached, writeCached } from '../utils/localCache';
@@ -29,7 +30,26 @@ const PAYMENT_METHODS: Array<{ id: PaymentMethod; label: string; detail: string 
     label: 'Virement bancaire',
     detail: 'L’atelier vous envoie ses coordonnées bancaires ; la commande est préparée dès réception du virement.',
   },
+  {
+    id: 'wafacash',
+    label: 'Transfert Wafacash',
+    detail: cashTransferDetail('Wafacash'),
+  },
+  {
+    id: 'cashplus',
+    label: 'Transfert Cash Plus',
+    detail: cashTransferDetail('Cash Plus'),
+  },
 ];
+
+/** How a Wafacash / Cash Plus transfer works, with the beneficiary when it is configured. */
+function cashTransferDetail(network: string) {
+  const { beneficiary, phone } = COMPANY.cashTransfer;
+  const to = beneficiary
+    ? `au nom de ${beneficiary}${phone ? ` (${phone})` : ''}`
+    : 'au bénéficiaire que l’atelier vous communique après la commande';
+  return `Envoyez le montant dans une agence ${network} ${to}, puis transmettez-nous le code du transfert sur WhatsApp. La commande est préparée dès réception.`;
+}
 
 export function Cart() {
   const { items, total, updateQty, removeItem, clear, itemKey } = useCart();
