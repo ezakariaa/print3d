@@ -6727,6 +6727,36 @@ html[data-theme='light'] .option-image-picker-remove {
   }
 }
 
+// Browser autofill paints its own light-blue background over the field; an inset shadow in
+// the theme's field colour covers it, and the text keeps the theme's colour.
+.form-control:-webkit-autofill,
+.form-control:-webkit-autofill:hover,
+.form-control:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--brand-mist);
+  caret-color: var(--brand-mist);
+  box-shadow: 0 0 0 1000px #0f1c28 inset;
+  transition: background-color 9999s ease-out 0s;
+}
+
+.form-control:-webkit-autofill:focus {
+  -webkit-text-fill-color: #fff;
+  box-shadow: 0 0 0 1000px #0f1c28 inset, 0 0 0 0.2rem rgba(18, 184, 160, 0.2);
+}
+
+html[data-theme='light'] {
+  .form-control:-webkit-autofill,
+  .form-control:-webkit-autofill:hover,
+  .form-control:-webkit-autofill:focus {
+    -webkit-text-fill-color: #17242d;
+    caret-color: #17242d;
+    box-shadow: 0 0 0 1000px #fff inset;
+  }
+
+  .form-control:-webkit-autofill:focus {
+    box-shadow: 0 0 0 1000px #fff inset, 0 0 0 0.2rem rgba(18, 184, 160, 0.2);
+  }
+}
+
 .form-label {
   font-weight: 800;
   font-size: 0.9rem;
